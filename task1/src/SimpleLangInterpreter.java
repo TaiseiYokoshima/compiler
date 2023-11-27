@@ -11,6 +11,13 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
     public Integer visitProgram(SimpleLangParser.ProgContext ctx, String[] args)
     {
 
+//        for (String arg: args) {
+//            System.out.println("args: " + arg);
+//        }
+
+
+
+        //store the function declarations in the hashmap
         for (int i = 0; i < ctx.dec().size(); ++i) {
 
             SimpleLangParser.DecContext dec = ctx.dec(i);
@@ -23,14 +30,22 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
 
         Map<String, Integer> newFrame = new HashMap<>();
         for (int i = 0; i < args.length; ++i) {
+
+            String idfr = main.vardec.get(i).Idfr().getText();
+//            System.out.println("idfr: " + idfr);
+
             if (args[i].equals("true")) {
-                newFrame.put(main.typed_idfr().get(i).Idfr().getText(), 1);
+                newFrame.put(idfr, 1);
             } else if (args[i].equals("false")) {
-                newFrame.put(main.typed_idfr().get(i).Idfr().getText(), 0);
+                newFrame.put(idfr, 0);
             } else {
-                newFrame.put(main.typed_idfr().get(i).Idfr().getText(), Integer.parseInt(args[i]));
+                newFrame.put(idfr, Integer.parseInt(args[i]));
             }
         }
+
+//        for(Map.Entry<String, Integer> entry: newFrame.entrySet()) {
+//            System.out.println("newframe: " + entry.getKey()  + " | " + entry.getValue() );
+//        }
 
         frames.push(newFrame);
         return visit(main);
@@ -46,7 +61,6 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
 
     @Override public Integer visitDec(SimpleLangParser.DecContext ctx)
     {
-
         Integer returnValue = visit(ctx.body());
         frames.pop();
         return returnValue;
@@ -86,13 +100,17 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
 
     @Override public Integer visitAssignExpr(SimpleLangParser.AssignExprContext ctx)
     {
-
         SimpleLangParser.ExpContext rhs = ctx.exp();
-        frames.peek().replace(ctx.Idfr().getText(), visit(rhs));
+        frames.peek().put(ctx.typed_idfr().Idfr().getText(), visit(rhs));
         return null;
 
     }
-
+    //added
+    @Override public Integer visitReassignExpr(SimpleLangParser.ReassignExprContext ctx) {
+        SimpleLangParser.ExpContext rhs = ctx.exp();
+        frames.peek().put(ctx.Idfr().getText(), visit(rhs));
+        return null;
+    }
     @Override public Integer visitBinOpExpr(SimpleLangParser.BinOpExprContext ctx) {
 
         SimpleLangParser.ExpContext operand1 = ctx.exp(0);
@@ -117,6 +135,43 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
                 return ((oprnd1 <= oprnd2) ? 1 : 0);
 
             }
+            case SimpleLangParser.Greater -> {
+
+                return ((oprnd1 > oprnd2) ? 1 : 0);
+
+            }
+            case SimpleLangParser.GreaterEq -> {
+
+                return ((oprnd1 >= oprnd2) ? 1 : 0);
+
+            }
+            case SimpleLangParser.And -> {
+                if (oprnd1 == 0) {
+                    return 0;
+                } else if (oprnd2 == 0) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+            case SimpleLangParser.Or -> {
+                if (oprnd1 == 1) {
+                    return 1;
+                } else if (oprnd2 == 1) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+            case SimpleLangParser.Xor -> {
+                if (oprnd1 == 0 && oprnd2 == 0) {
+                    return 0;
+                } else if (oprnd1 == 1 && oprnd2 == 1) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
             case SimpleLangParser.Plus -> {
 
                 return oprnd1 + oprnd2;
@@ -132,6 +187,11 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
                 return oprnd1 * oprnd2;
 
             }
+            case SimpleLangParser.Divide -> {
+
+                return oprnd1 / oprnd2;
+
+            }
             default -> {
                 throw new RuntimeException("Shouldn't be here - wrong binary operator.");
             }
@@ -143,11 +203,19 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
     {
 
         SimpleLangParser.DecContext dec = global_funcs.get(ctx.Idfr().getText());
-        SimpleLangParser.Typed_idfrContext param = dec.vardec.get(0);
+
+//      new stack for the function being called
         Map<String, Integer> newFrame = new HashMap<>();
 
-        SimpleLangParser.ExpContext exp = ctx.args.get(0);
-        newFrame.put(param.Idfr().getText(), visit(exp));
+        for (int i = 0; i < dec.vardec.size(); i++) {
+            SimpleLangParser.Typed_idfrContext param = dec.vardec.get(i);
+            SimpleLangParser.ExpContext exp = ctx.args.get(i);
+            newFrame.put(param.Idfr().getText(), visit(exp));
+        }
+
+//        SimpleLangParser.Typed_idfrContext param = dec.vardec.get(0);
+//        SimpleLangParser.ExpContext exp = ctx.args.get(0);
+//        newFrame.put(param.Idfr().getText(), visit(exp));
 
         frames.push(newFrame);
         return visit(dec);
@@ -163,6 +231,7 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
 
         SimpleLangParser.ExpContext cond = ctx.exp();
         Integer condValue = visit(cond);
+
         if (condValue > 0) {
 
             SimpleLangParser.BlockContext thenBlock = ctx.block(0);
@@ -177,8 +246,32 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
 
     }
 
-    @Override public Integer visitPrintExpr(SimpleLangParser.PrintExprContext ctx) {
+    //added
+    @Override public Integer visitParenExpr(SimpleLangParser.ParenExprContext ctx) {
+        return visit(ctx.exp());
+    }
 
+
+    //added
+    @Override public Integer visitWhileExpr(SimpleLangParser.WhileExprContext ctx) {
+        while (visit(ctx.exp()) > 0) {
+            visit(ctx.body());
+        }
+        return null;
+    }
+
+    @Override public Integer visitRepeatExpr(SimpleLangParser.RepeatExprContext ctx) {
+        visit(ctx.body());
+
+        while(visit(ctx.exp()) == 0) {
+            visit(ctx.body());
+        }
+        return null;
+    }
+
+
+
+    @Override public Integer visitPrintExpr(SimpleLangParser.PrintExprContext ctx) {
         SimpleLangParser.ExpContext exp = ctx.exp();
 
         if (((TerminalNode) exp.getChild(0)).getSymbol().getType() == SimpleLangParser.Space) {
@@ -190,8 +283,8 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
             System.out.println();
 
         } else {
-
             System.out.print(visit(exp));
+//            System.out.println();
 
         }
 
@@ -203,6 +296,10 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
         return null;
     }
 
+    @Override public Integer visitNewLineExpr(SimpleLangParser.NewLineExprContext ctx) {
+        return null;
+    }
+
     @Override public Integer visitIdExpr(SimpleLangParser.IdExprContext ctx)
     {
         return frames.peek().get(ctx.Idfr().getText());
@@ -210,10 +307,17 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
 
     @Override public Integer visitIntExpr(SimpleLangParser.IntExprContext ctx)
     {
-
         return Integer.parseInt(ctx.IntLit().getText());
-
     }
+    @Override public Integer visitBoolExpr(SimpleLangParser.BoolExprContext ctx) {
+        if (ctx.BoolLit().getText().equals("true")) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+
     @Override public Integer visitEqBinop(SimpleLangParser.EqBinopContext ctx) {
         throw new RuntimeException("Should not be here!");
     }
@@ -221,6 +325,14 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
         throw new RuntimeException("Should not be here!");
     }
     @Override public Integer visitLessEqBinop(SimpleLangParser.LessEqBinopContext ctx) {
+        throw new RuntimeException("Should not be here!");
+    }
+    //    added line
+    @Override public Integer visitGreaterBinop(SimpleLangParser.GreaterBinopContext ctx) {
+        throw new RuntimeException("Should not be here!");
+    }
+    //    added line
+    @Override public Integer visitGreaterEqBinop(SimpleLangParser.GreaterEqBinopContext ctx) {
         throw new RuntimeException("Should not be here!");
     }
     @Override public Integer visitPlusBinop(SimpleLangParser.PlusBinopContext ctx) {
@@ -232,5 +344,18 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
     @Override public Integer visitTimesBinop(SimpleLangParser.TimesBinopContext ctx) {
         throw new RuntimeException("Should not be here!");
     }
+    //    added line
+    @Override public Integer visitDivideBinop(SimpleLangParser.DivideBinopContext ctx) {
+        throw new RuntimeException("Should not be here!");
+    }
 
+    @Override public Integer visitXorBinop(SimpleLangParser.XorBinopContext ctx) {
+        throw new RuntimeException("Should not be here!");
+    }
+    @Override public Integer visitOrBinop(SimpleLangParser.OrBinopContext ctx) {
+        throw new RuntimeException("Should not be here!");
+    }
+    @Override public Integer visitAndBinop(SimpleLangParser.AndBinopContext ctx) {
+        throw new RuntimeException("Should not be here!");
+    }
 }
