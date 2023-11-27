@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}
+
+task run(type: JavaExec) {
+    workingDir = rootProject.projectDir
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Task2'
+    standardInput = System.in
+    // standardOutput defaults to System.out.
+}
+
+task runtests(type: JavaExec) {
+    workingDir = rootProject.projectDir
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Task2Tester'
+    standardInput = System.in
+    // standardOutput defaults to System.out.
+}
+
+dependencies {
+    implementation files ('../antlr-4.13.1-complete.jar')
+    implementation files ('../rars1_6.jar')
+}
