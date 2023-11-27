@@ -50,21 +50,6 @@ exp
     | BoolLit                                               #BoolExpr
 ;
 
-//added
-//condition
-//    : exp Or condition      #OrCondition
-//
-//    | exp Xor condition     #XorCondition
-//    | exp                   #ConditionOperand
-//;
-//
-//term
-//    : exp And condition     #AndCondition
-//
-//;
-
-
-
 binop
     : Eq              #EqBinop
     | Less            #LessBinop
