@@ -1,0 +1,6 @@
+*
+!.gitignore
+!SimpleLangInterpreter.java
+!Task1.java
+!Task1Tester.java
+!SimpleLang.g4
