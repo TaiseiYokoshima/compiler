@@ -2,12 +2,6 @@ grammar SimpleLang;
 
 prog : dec+ EOF;
 
-
-//dec
-//    : typed_idfr LParen (vardec+=typed_idfr)? RParen body
-//;
-
-//updated
 dec
     : typed_idfr LParen (vardec+=typed_idfr (Comma vardec+=typed_idfr)*)? RParen body
 ;
@@ -21,7 +15,6 @@ type
     : IntType | BoolType | UnitType
 ;
 
-
 body
     : LBrace ene+=exp (Semicolon ene+=exp)* RBrace
 ;
@@ -30,18 +23,16 @@ block
     : LBrace ene+=exp (Semicolon ene+=exp)* RBrace
 ;
 
-
-
 exp
-    : Idfr Assign exp                                       #ReassignExpr
-    | typed_idfr Assign exp                                 #AssignExpr
+    : typed_idfr Assign exp                                 #AssignExpr
+    | Idfr Assign exp                                       #ReassignExpr
     | LParen exp binop exp RParen                           #BinOpExpr
     | Idfr LParen (args+=exp (Comma args+=exp)*)? RParen    #InvokeExpr
     | block                                                 #BlockExpr
     | If exp Then block Else block                          #IfExpr
     | LParen exp RParen                                     #ParenExpr
-    | While exp Do body                                     #WhileExpr
-    | Repeat body Until exp                                 #RepeatExpr
+    | While exp Do block                                    #WhileExpr
+    | Repeat block Until exp                                #RepeatExpr
     | Print exp                                             #PrintExpr
     | Space                                                 #SpaceExpr
     | NewLine                                               #NewLineExpr
@@ -54,11 +45,9 @@ binop
     : Eq              #EqBinop
     | Less            #LessBinop
     | LessEq          #LessEqBinop
-    //added
     | Greater         #GreaterBinop
     | GreaterEq       #GreaterEqBinop
 
-    //added
     | And             #AndBinop
     | Or              #OrBinop
     | Xor             #XorBinop
@@ -66,17 +55,13 @@ binop
     | Plus            #PlusBinop
     | Minus           #MinusBinop
     | Times           #TimesBinop
-    //added
     | Divide          #DivideBinop
 ;
 
-
-//added
 While       : 'while' ;
 Do          : 'do';
 Repeat      : 'repeat';
 Until       : 'until';
-
 
 LParen      : '(' ;
 Comma       : ',' ;
@@ -88,11 +73,9 @@ RBrace      : '}' ;
 Eq          : '==' ;
 Less        : '<' ;
 LessEq      : '<=' ;
-//added
 Greater     : '>';
 GreaterEq   : '>=';
 
-//added
 And         : '&';
 Or          :  '|';
 Xor         : '^';

@@ -1,2 +1,9 @@
 bnez <register>, <label> | check if register value is greater than 0. if so jump to label
+bge <reg1>, <reg2>, <label> | jump to label if reg1 >= reg2
+blt <reg1>, <reg2>, <label> | jump to label if reg1 < reg2
+beq <reg1>, <reg2>, <label> | jump to label if reg1 == reg2
+j <label> | jump to label
+
+
+
 
