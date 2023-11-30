@@ -336,6 +336,25 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append(visit(ctx.exp()));
         sb.append(String.format("""
             PopRel      (%d)
+        """, localVars.get(ctx.typed_idfr().Idfr().getText()))
+        );
+
+        sb.append("""
+            PushImm     0       # dummy value
+        """);
+
+        return sb.toString();
+
+    }
+
+    @Override public String visitReassignExpr(SimpleLangParser.ReassignExprContext ctx)
+    {
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(visit(ctx.exp()));
+        sb.append(String.format("""
+            PopRel      (%d)
         """, localVars.get(ctx.Idfr().getText()))
         );
 
@@ -488,6 +507,12 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         return sb.toString();
     }
+
+    @Override public String visitParenExpr(SimpleLangParser.ParenExprContext ctx) {
+        return "";
+    }
+
+
     @Override public String visitPrintExpr(SimpleLangParser.PrintExprContext ctx)
     {
 

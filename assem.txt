@@ -7,3 +7,56 @@ j <label> | jump to label
 
 
 
+tasks:
+1. understand the stack implementation
+2. how the program exits
+3. 
+
+int main () {
+	int x = 10;
+	int y = 99;
+	int z = fn()
+}
+
+int fn () {
+	-100
+}
+
+
+
+
+return value
+local var  x
+local var  y
+local var z
+control link
+return address
+
+x : 4
+y : 8
+z : 12
+
+
+PushImm 0
+Reserve 4
+
+int x stored
+PushImm 10
+Reserve 4
+
+int y stored
+PushImm 99
+Reserve 4
+
+
+
+
+
+
+
+
+
+
+
+
+
