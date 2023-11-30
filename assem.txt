@@ -1,0 +1,2 @@
+bnez <register>, <label> | check if register value is greater than 0. if so jump to label
+
