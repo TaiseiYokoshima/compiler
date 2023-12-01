@@ -37,6 +37,12 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     .macro    SetFP
         mv            fp, sp
     .end_macro
+    
+    .macro    PushReturnValue $int
+        PushImm $int
+        sw fp, (sp)
+        addi sp, sp, -4
+    .end_macro
                         
     .macro    SaveFP
         sw            fp, (sp)

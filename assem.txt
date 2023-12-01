@@ -7,54 +7,60 @@ j <label> | jump to label
 mv <reg1>, <reg2>  | copy the contents of reg2 to reg1
 
 
-function call steps
-1. return value intialized with placeholder value
-2. arguments pushed to stack
-3. local variables pushed to stack
+
+
+
+
+
+
+
+Stack Machine commands
+PushRel <offset>| to copy the value of a local variable to the stack of the stack (offset(fp))
+PopRel <offset>| pop the top element of the stack and store it to one of local variables (offset(fp))
+SetFP
+
+
+function call steps | PushReturnValue -> Invoke <func_label_name> |
+1. prerequisite procedures:
+	1. stores current fp address address(RV)+4
+	2. sets fp to sp
+	3. return value pushed with placeholder value
+2. invoking func
+	1. loads return address to ra with jal
+	2. offsets return address by 16
+	3. stores return address to RA on the stack
+	4. jumps to function label
+	
+
+function body steps | <body expressions> -> Return |
+1. initialize arguments with parameters
+2. initialize local variables
+3. run all body expressions if all
+4. optionally, reassign return value if 
+5. Return command
+	1. sets sp to fp
+	2. load return address to ra
+	3. optionally, load previous fp address to fp 
+	4. exit function by jumping to address stored in ra
+
+
+
 
 
 
 tasks:
-1. understand the stack implementation
-2. how the program exits
-3. find out syscalls for windows for printing strings
+1. how the program exits
+2. literals
+3. idfr
+2. binary operations
+3. 
 
 int main () {
 	int x = 10;
-	int y = 99;
-	int z = fn()
+	int y = 9;
+	int z = ((10 + 100) / 2);
+	z
 }
-
-int fn () {
-	-100
-}
-
-
-
-
-return value
-local var  x
-local var  y
-local var z
-control link
-return address
-
-x : 4
-y : 8
-z : 12
-
-
-PushImm 0
-Reserve 4
-
-int x stored
-PushImm 10
-Reserve 4
-
-int y stored
-PushImm 99
-Reserve 4
-
 
 
 

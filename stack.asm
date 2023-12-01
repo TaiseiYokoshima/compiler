@@ -4,19 +4,56 @@
         addi          sp, sp, 4
         ecall
 .end_macro
+.macro    SetFP
+        mv            fp, sp
+.end_macro
 
 .macro    Invoke      $address
+	#saves jump address to ra
         jal           next
     next:
         mv            t1, ra
-        addi          t1, t1, 20
-        sw            t1, (sp)
-        addi          sp, sp, -4
+        addi          t1, t1, 16
+        sw            t1, -8(fp)
         j             $address
+.end_macro
+
+.macro    PushReturnValue $int
+       	#saves previous fp address	
+	sw fp, -4(sp)
+	
+	#sets fp to new stack
+	SetFP
+	
+	#pushes return Value
+        PushImm $int
+
+        #moves down sp to arg sec
+        addi sp, sp, -8
+.end_macro
+
+.macro    Return
+	#resets sp
+	mv sp, fp
+	
+	#load return adress to ra
+	lw ra, -8(fp)
+	
+	#load previous fp 
+	lw, fp, -4(fp)
+
+	#exits by jumping to the address stored at ra
+	jalr zero, ra, 0
 .end_macro
 
 .macro    PushImm     $number
         li            t1, $number
+        sw            t1, (sp)
+        addi          sp, sp, -4
+.end_macro
+
+.macro    PushImmNeg    $number
+        li            t1, -$number
         sw            t1, (sp)
         addi          sp, sp, -4
 .end_macro
@@ -49,53 +86,42 @@
 
 .text
 boot:	
-	mv fp, sp
+	#Pushes return value
+	PushReturnValue 0
 	
-	#return value
-	PushImm 0	
-	#local variables
-	PushImm 10
-	PushImm 9
 	Invoke main
+	
+	#prints return value
 	PrintReturnValue terminate
 		
-
 	lw a7, exit_code
 	li a0, 0
 	ecall
 	
-main:
-	PrintInt 4
-	PrintInt 8
+main:	
+	#local variables
+	PushImmNeg 10
+	PushImm 9
 	
-	mv fp, sp
-	
-	PushImm 70
-	PushImm 50
-	Invoke func
-	PrintReturnValue print_func	
+	#prints local variables
+	PrintInt 12
+	PrintInt 16
 
-	lw ra, 4(sp)
-	#set sp address to return value address
-	mv sp, fp
-	jalr zero, ra, 0
+	
+	#pushes return value
+	PushReturnValue 70
+	Invoke func
+	
+	#prints return value
+	PrintReturnValue print_func	
+	
+	Return
 	    
 
 func:
-	PrintInt 4
-	
-	#load return address to ra
-	lw ra, 4(sp)	
-	
-	#set sp address to return value address
-	mv sp, fp
-		
-	#move back the fp 
-	addi fp, fp, 16
-
-	
-	#return out - jump back
-	jalr zero, ra, 0
+	PushImm 50
+	PrintInt 12
+	Return
 
 
 
