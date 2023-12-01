@@ -49,53 +49,18 @@
 
 .text
 boot:	
-	mv fp, sp
-	
-	#return value
-	PushImm 0	
-	#local variables
-	PushImm 10
-	PushImm 9
-	Invoke main
-	PrintReturnValue terminate
-		
+	lw a7, print_int_code
+	mv a0, sp
+	ecall
 
 	lw a7, exit_code
 	li a0, 0
 	ecall
 	
-main:
-	PrintInt 4
-	PrintInt 8
 	
-	mv fp, sp
 	
-	PushImm 70
-	PushImm 50
-	Invoke func
-	PrintReturnValue print_func	
-
-	lw ra, 4(sp)
-	#set sp address to return value address
-	mv sp, fp
-	jalr zero, ra, 0
 	    
 
-func:
-	PrintInt 4
-	
-	#load return address to ra
-	lw ra, 4(sp)	
-	
-	#set sp address to return value address
-	mv sp, fp
-		
-	#move back the fp 
-	addi fp, fp, 16
-
-	
-	#return out - jump back
-	jalr zero, ra, 0
 
 
 

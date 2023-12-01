@@ -52,13 +52,33 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
     {
         throw new RuntimeException("Should not be here!");
     }
-    @Override public Integer visitBody(SimpleLangParser.BodyContext ctx) {
+    @Override public Integer visitNoInitializations(SimpleLangParser.NoInitializationsContext ctx) {
         Integer returnValue = null;
-        for (int i = 0; i < ctx.ene.size(); ++i) {
-            SimpleLangParser.ExpContext exp = ctx.ene.get(i);
-            returnValue = visit(exp);
+        for(int i = 0; i < ctx.ene.size(); i++) {
+            returnValue = visit(ctx.ene.get(i));
         }
         return returnValue;
+    }
+    @Override public Integer visitWithInitializations(SimpleLangParser.WithInitializationsContext ctx) {
+        visit(ctx.initializations());
+
+        Integer returnValue = null;
+
+        for(int i = 0; i < ctx.ene.size(); i++) {
+            returnValue = visit(ctx.ene.get(i));
+        }
+        return returnValue;
+    }
+    @Override public Integer visitInitializations(SimpleLangParser.InitializationsContext ctx) {
+        for(int i = 0; i < ctx.iel.size(); i++) {
+            visit(ctx.iel.get(i));
+        }
+        return null;
+    }
+    @Override public Integer visitInitializeExpr(SimpleLangParser.InitializeExprContext ctx) {
+        SimpleLangParser.ExpContext rhs = ctx.exp();
+        frames.peek().put(ctx.typed_idfr().Idfr().getText(), visit(rhs));
+        return null;
     }
     @Override public Integer visitBlock(SimpleLangParser.BlockContext ctx)
     {
@@ -71,11 +91,6 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
     }
     @Override public Integer visitAssignExpr(SimpleLangParser.AssignExprContext ctx)
     {
-        SimpleLangParser.ExpContext rhs = ctx.exp();
-        frames.peek().put(ctx.typed_idfr().Idfr().getText(), visit(rhs));
-        return null;
-    }
-    @Override public Integer visitReassignExpr(SimpleLangParser.ReassignExprContext ctx) {
         SimpleLangParser.ExpContext rhs = ctx.exp();
         frames.peek().replace(ctx.Idfr().getText(), visit(rhs));
         return null;
@@ -221,6 +236,11 @@ public class SimpleLangInterpreter extends AbstractParseTreeVisitor<Integer> imp
             return 0;
         }
     }
+    @Override public Integer visitSkipExpr(SimpleLangParser.SkipExprContext ctx) {
+        return null;
+    }
+
+
     @Override public Integer visitEqBinop(SimpleLangParser.EqBinopContext ctx) {
         throw new RuntimeException("Should not be here!");
     }

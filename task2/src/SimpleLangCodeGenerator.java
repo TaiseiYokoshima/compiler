@@ -13,7 +13,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sw            t1, (sp)
         addi          sp, sp, -4
     .end_macro
-                        
+                       
     .macro    PushRel     $offset
         lw            t1, $offset(fp)
         sw            t1, (sp)
