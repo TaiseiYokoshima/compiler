@@ -1,16 +1,23 @@
-bnez <register>, <label> | check if register value is greater than 0. if so jump to label
+bnez <reg1>, <label> | check if register value is greater than 0. if so jump to label
 bge <reg1>, <reg2>, <label> | jump to label if reg1 >= reg2
 blt <reg1>, <reg2>, <label> | jump to label if reg1 < reg2
 beq <reg1>, <reg2>, <label> | jump to label if reg1 == reg2
 j <label> | jump to label
 
+mv <reg1>, <reg2>  | copy the contents of reg2 to reg1
+
+
+function call steps
+1. return value intialized with placeholder value
+2. arguments pushed to stack
+3. local variables pushed to stack
 
 
 
 tasks:
 1. understand the stack implementation
 2. how the program exits
-3. 
+3. find out syscalls for windows for printing strings
 
 int main () {
 	int x = 10;

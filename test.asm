@@ -1,21 +1,21 @@
 
+.text
+boot:
+	li, t1, 999
+	sw, t1, -4(fp)
+	
+	lw, a7, print_int_code
+	mv, a0, t1
+	ecall
+	
+	
+
+
 .data
     n: .word 100
-    print_int_code: .word 1
-    exit_code: .word 10
-
-.text
-
-main:
-    lw a0, n
-
-loop_start: 
-    lw a7, print_int_code
-    ecall
-    addi a0, a0, -1
-    bnez a0, loop_start
+    print_func: .string "return value is: "    
     
-
-exit:
-    lw a7, exit_code
-    ecall
+    exit_code: .word 93
+    print_int_code: .word 1
+    print_str_code: .word 4
+    print_newline_code: .word
