@@ -40,12 +40,11 @@ int main() {
 
 
 
-int main() {
-	int x := 10;
+int main(int x, int y) {
 	print x;
 	print newline;
 	print newline;
-	print x
+	print y
 }
 
 
@@ -86,6 +85,26 @@ int main() {
 	} else {};
 	10
 }
+
+
+
+
+
+int main() {
+	int x := 0;
+	int y := 0;
+	repeat {
+		y := 0;
+		repeat {
+			print y;
+			y := (y + 1)
+		} until (y > 3);
+		print newline;
+		x := (1 + x)
+	} until (x > 2)
+}
+
+
 
 
 

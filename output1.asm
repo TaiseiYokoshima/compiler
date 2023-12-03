@@ -242,21 +242,18 @@ start:
 	addi 	t1, t1, 20
 	sw 	t1, (sp)
 	addi	sp, sp, -4
-	j 	cond
+	j 	body
 	
-cond:
+block:
 	PushImm 1
 	PushImm 0
-	CompGT
-	JumpTrue body
-	j exit
-body:
 	
-	#clean up body 
+cond:
+	beq t1, t2, block
+	
+	
 
-	lw 	ra, 4(sp)
-	jalr 	zero, ra, 0
-exit:
+		
 	
 	
 	

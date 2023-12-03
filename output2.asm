@@ -227,28 +227,18 @@ boot:
     lw a7, exit_code
     li a0, 0
     ecall
+    
+    
 main:
-    PushImm     10
-    Reserve 4
-    Discard 4
-    #print expression
-    PushRel     (12)
-    Print
-    Reserve 4
-    Discard 4
-    #print expression
-    PrintNewLine
-    Reserve 4
-    Discard 4
-    #print expression
-    PrintNewLine
-    Reserve 4
-    Discard 4
-    #print expression
-    PushRel     (12)
-    Print
-    Reserve 4
-    Discard 4
-null    PopRel 0
-    Discard 4
-    Return
+
+cond:
+	
+	j exit
+		
+block:
+	PushImm 1
+	PushImm 0
+	
+	j cond
+	
+exit:

@@ -577,6 +577,20 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         StringBuilder sb = new StringBuilder();
 
+        System.out.println("binop operand 1: " + ctx.exp().get(0).getText());
+        System.out.println("binop operator: " + ctx.binop().getText());
+        System.out.println("binop operand 2: " + ctx.exp().get(1).getText());
+
+//
+//        if (ctx.exp(0).getText().equals("x") &&
+//            ctx.binop().getText().equals(">") &&
+//            ctx.exp(1).getText().equals("3")
+//        )
+//        {
+//            System.out.println("caught");
+//            throw  new RuntimeException(" in func");
+//        }
+
         sb.append(visit(ctx.exp(0)));
         sb.append(visit(ctx.exp(1)));
 
@@ -710,6 +724,8 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     }
 
     @Override public String visitParenExpr(SimpleLangParser.ParenExprContext ctx) {
+        System.out.println("paren visited");
+
         return visit(ctx.exp());
     }
 
@@ -753,7 +769,52 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     }
 
     @Override public String visitRepeatExpr(SimpleLangParser.RepeatExprContext ctx) {
-        return "";
+        StringBuilder sb = new StringBuilder();
+
+        System.out.println("repeat expr: " + ctx.exp().getText());
+        System.out.println(visit(ctx.exp()));
+        System.out.println("_________");
+
+
+        String blockLabel = String.format("block_label_%d", labelCounter++);
+        String condLabel = String.format("cond_label_%d", labelCounter++);
+        String exitLabel = String.format("exit_label_%d", labelCounter++);
+
+        sb.append(String.format("""
+        %s:
+        """, blockLabel
+        ));
+
+        sb.append(visit(ctx.block()));
+
+        sb.append(String.format("""
+        %s:
+        """, condLabel
+        ));
+
+        sb.append(visit(ctx.exp()));
+
+        System.out.println("repeat expr: " + ctx.exp().getText());
+        System.out.println(visit(ctx.exp()));
+        System.out.println("_________");
+
+        sb.append(String.format("""
+            Invert
+            lw      t1, 4(sp)
+            addi    sp, sp, 4
+            bnez    t1, %s
+        """, blockLabel
+        ));
+
+        sb.append(String.format("""
+        %s:
+        """, exitLabel
+        ));
+
+
+
+
+        return sb.toString();
     }
 
     @Override public String visitPrintExpr(SimpleLangParser.PrintExprContext ctx)
@@ -821,9 +882,11 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             ));
         }
 
-        return String.format("""
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("""
                     PushRel     (%d)
-                """, offset);
+                """, offset));
+        return sb.toString();
     }
     public String visitIdExprBlock(SimpleLangParser.IdExprContext ctx) {
         StringBuilder sb = new StringBuilder();
