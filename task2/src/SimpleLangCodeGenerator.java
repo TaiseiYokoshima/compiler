@@ -384,9 +384,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             }
 
             int max = Collections.max(block.values());
-            System.out.println("max: " + max);
             offset = Collections.max(block.values()) + 4;
-            System.out.println("offset: " + offset );
             break;
         }
 
@@ -401,25 +399,13 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     {
         StringBuilder sb = new StringBuilder();
         Map<String, Integer> map = new HashMap<>();
-
-        boolean check = ctx.getParent().getClass() == SimpleLangParser.WhileExprContext.class;
-
-        if (check) {
-            int offset = getNextOffset();
-            String RA_name = String.format("%d_RA",blockVars.size());
-            map.put(RA_name, offset);
-        }
-
         blockVars.add(map);
-
 
         for (int i = 0; i < ctx.ene.size(); ++i) {
             String output = visit(ctx.ene.get(i));
-
             if (i == ctx.ene.size() - 1 && output == null) {
                 throw new RuntimeException("The last expression of a block or a body cannot end with \";\".");
             }
-
 
             sb.append(output);
             if (i != ctx.ene.size() - 1) {
@@ -430,36 +416,19 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             }
         }
 
-        if (check) {
-            Integer RA_address = Collections.min(map.values());
-            Integer min_offset = RA_address + 8;
+
+        if (!map.isEmpty()) {
+            Integer min_offset = Collections.min(map.values());
+            Integer sp_address = min_offset + 4;
             sb.append(String.format("""
-                    #loads the return address to ra
-                    lw      ra, -%d(fp)
-                
+                    #loads value at the top of stack
+                    lw t1, 4(sp)
+                    #saves it to the rv of the block
+                    sw t1, -%d(fp)
                     #resets the sp
                     addi sp, fp, -%d
-                    
-                    #jumps to cond
-                    jalr    zero, ra, 0
-                """, RA_address, min_offset
+                """, min_offset, sp_address
             ));
-
-        } else {
-            if (!map.isEmpty()) {
-                Integer min_offset = Collections.min(map.values());
-                Integer sp_address = min_offset + 4;
-                sb.append(String.format("""
-                        #loads value at the top of stack
-                        lw t1, 4(sp)
-                        #saves it to the rv of the block
-                        sw t1, -%d(fp)
-                        #resets the sp
-                        addi sp, fp, -%d
-                        """, min_offset, sp_address
-                ));
-            }
-
         }
         blockVars.remove(blockVars.size() - 1);
         return sb.toString();
@@ -471,7 +440,6 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             return block_variable_initialization(ctx);
         }
 
-
         String var_name = ctx.typed_idfr().Idfr().getText();
         if (localVars.get(var_name) != null) {
             throw new RuntimeException(String.format(
@@ -482,19 +450,13 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         StringBuilder sb = new StringBuilder();
         sb.append(visit(ctx.exp()));
 
-
         Integer offset = (localVars.isEmpty()) ? 12 : Collections.max(localVars.values()) + 4;
         localVars.put(var_name, offset);
-
 
         sb.append("""
             Reserve 4
         """);
-
-
-
         return sb.toString();
-
     }
     public String block_variable_initialization(SimpleLangParser.AssignExprContext ctx) {
         String var_name = ctx.typed_idfr().Idfr().getText();
@@ -574,23 +536,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     }
     @Override public String visitBinOpExpr(SimpleLangParser.BinOpExprContext ctx)
     {
-
         StringBuilder sb = new StringBuilder();
-
-        System.out.println("binop operand 1: " + ctx.exp().get(0).getText());
-        System.out.println("binop operator: " + ctx.binop().getText());
-        System.out.println("binop operand 2: " + ctx.exp().get(1).getText());
-
-//
-//        if (ctx.exp(0).getText().equals("x") &&
-//            ctx.binop().getText().equals(">") &&
-//            ctx.exp(1).getText().equals("3")
-//        )
-//        {
-//            System.out.println("caught");
-//            throw  new RuntimeException(" in func");
-//        }
-
         sb.append(visit(ctx.exp(0)));
         sb.append(visit(ctx.exp(1)));
 
@@ -724,58 +670,53 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     }
 
     @Override public String visitParenExpr(SimpleLangParser.ParenExprContext ctx) {
-        System.out.println("paren visited");
-
         return visit(ctx.exp());
     }
 
     @Override public String visitWhileExpr(SimpleLangParser.WhileExprContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        String startLabel = String.format("start_label_%d", labelCounter++);
         String condLabel = String.format("cond_label_%d", labelCounter++);
         String blockLabel = String.format("block_label_%d", labelCounter++);
         String exitLabel = String.format("exit_label_%d", labelCounter++);
 
+//        cond label
         sb.append(String.format("""
-            jal %s
         %s:
-            mv      t1, ra
-            addi    t1, t1, 20
-            sw      t1, (sp)
-            addi    sp, sp, -4
-            j %s
-        %s:
-        """,startLabel, startLabel, condLabel, condLabel
+        """, condLabel
         ));
 
+//        condition check expr
         sb.append(visit(ctx.exp()));
+
+//        jumping based on condition
         sb.append(String.format("""
-            JumpTrue    %s
-            j           %s
-            
-        %s:
-        """, blockLabel, exitLabel, blockLabel
+            Invert
+            lw      t1, 4(sp)
+            addi    sp, sp, 4
+            bnez    t1, %s
+        """, exitLabel
         ));
 
+//        block label
+        sb.append(String.format("""
+        %s:
+        """, blockLabel
+        ));
+
+//        block expressions
         sb.append(visit(ctx.block()));
 
         sb.append(String.format("""
+            j   %s
         %s:
-            Discard     4
-        """, exitLabel
+        """, condLabel, exitLabel
         ));
         return sb.toString();
     }
 
     @Override public String visitRepeatExpr(SimpleLangParser.RepeatExprContext ctx) {
         StringBuilder sb = new StringBuilder();
-
-        System.out.println("repeat expr: " + ctx.exp().getText());
-        System.out.println(visit(ctx.exp()));
-        System.out.println("_________");
-
-
         String blockLabel = String.format("block_label_%d", labelCounter++);
         String condLabel = String.format("cond_label_%d", labelCounter++);
         String exitLabel = String.format("exit_label_%d", labelCounter++);
@@ -794,9 +735,6 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         sb.append(visit(ctx.exp()));
 
-        System.out.println("repeat expr: " + ctx.exp().getText());
-        System.out.println(visit(ctx.exp()));
-        System.out.println("_________");
 
         sb.append(String.format("""
             Invert
@@ -810,10 +748,6 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         %s:
         """, exitLabel
         ));
-
-
-
-
         return sb.toString();
     }
 
@@ -831,7 +765,6 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                     """
             );
         } else if (ctx.exp().getClass() == SimpleLangParser.NewLineExprContext.class) {
-            System.out.println("came into this clause");
             sb.append("""
                 PrintNewLine
             """);
@@ -850,8 +783,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         return sb.toString();
     }
-    @Override public String visitSpaceExpr(SimpleLangParser.SpaceExprContext ctx)
-    {
+    @Override public String visitSpaceExpr(SimpleLangParser.SpaceExprContext ctx) {
         return """
                     Reserve     4
                 """;
@@ -894,8 +826,6 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         Integer offset = null;
 
 
-        System.out.println("size " + blockVars.size() + ": " + blockVars.get(blockVars.size() - 1));
-
 
         for (int i = blockVars.size() - 1; i >= 0; i--) {
             Map<String, Integer> block = blockVars.get(i);
@@ -929,7 +859,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         StringBuilder sb = new StringBuilder();
         int value = Integer.parseInt(ctx.IntLit().getText());
 
-        if (value > 0) {
+        if (value > 0 || value == 0) {
             sb.append(String.format("""
                 PushImm     %d
             """, value)

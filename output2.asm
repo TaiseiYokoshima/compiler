@@ -233,7 +233,7 @@ main:
 
 cond:
 	
-	j exit
+	bnez exit
 		
 block:
 	PushImm 1

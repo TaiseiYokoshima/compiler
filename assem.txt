@@ -1,41 +1,16 @@
 
-int main() {
-	int x := 0;
-	print x;
-	if (true) then {
-		int x := -10;
-		print x;
-		if (true) then {
-			int x := -20;
-			print x;
-			if (true) then {
-				int x := -30;
-				print x
-			} else {skip}
-		} else {skip}
-	} else {skip}
-}
-
-
-
 
 int main() {
-	int output := 0;
 	int x := 10;
 	int y := 3;
 	while (x > 0) do {
 		print x;
-		print newline;
 		while (y > 0) do {
-			output := (output + y);
 			print y;
-			print newline;
 			y := (y - 1)
 		};
-		x := (x - 1)
-	};
-	print newline;
-	print output
+		x := (x - 1)	
+	}
 }
 
 
@@ -48,21 +23,24 @@ int main(int x, int y) {
 }
 
 
-
-int main() {
-	int a := 0;
-	print a;
-	if (true) then {
-		int b := -10;
-		if (true) then {
-			int c := -9;
-			b := 100;
-			print c;
-			print b
-		} else {skip}
-	} else {skip}
+int main () {
+	int x := 10;
+	int y := 3;
+	while (x > 0) do {
+		print x;
+		print newline;
+		print newline;			
+		print y;
+		print newline;
+		
+		while (y > 0) do {
+			print y;
+			y := (y - 1)
+		};
+		print newline;
+		x := (x - 1)
+	}
 }
-
 
 
 
@@ -80,10 +58,12 @@ x = 30
 
 
 int main() {
-	if (true ^ true) then {
-		print 10
-	} else {};
-	10
+	int x := 8;
+	while (x > 0) do {
+		print x;
+		print newline;
+		x := (x - 1)
+	}
 }
 
 
@@ -105,6 +85,19 @@ int main() {
 }
 
 
+int main(int n)
+{
+
+    int a := 0;
+    int i := 1;
+    while (i < n) do {
+	print i;
+        a := (a + i);
+        i := (i + 1)
+    };
+    a
+
+}
 
 
 
