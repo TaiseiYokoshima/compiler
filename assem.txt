@@ -18,21 +18,33 @@ int main() {
 
 
 
+
 int main() {
-	int x := 0;
-	print x;
-	if (true) then {
-		x := -10;
+	int output := 0;
+	int x := 10;
+	int y := 3;
+	while (x > 0) do {
 		print x;
-		if (true) then {
-			x := -20;
-			print x;
-			if (true) then {
-				x := -30;
-				print x
-			} else {skip}
-		} else {skip}
-	} else {skip};
+		print newline;
+		while (y > 0) do {
+			output := (output + y);
+			print y;
+			print newline;
+			y := (y - 1)
+		};
+		x := (x - 1)
+	};
+	print newline;
+	print output
+}
+
+
+
+int main() {
+	int x := 10;
+	print x;
+	print newline;
+	print newline;
 	print x
 }
 

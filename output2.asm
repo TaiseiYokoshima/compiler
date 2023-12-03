@@ -198,7 +198,11 @@ exit:
     ecall
 .end_macro
 
-
+.macro PrintNewLine
+    li              a7, 4
+    la              a0, newline
+    ecall
+.end_macro
 .data
     n: .word 100
     terminate: .string "terminated with: "
@@ -214,6 +218,7 @@ exit:
 .text
 
 # bootstrap loader that runs main()
+
 boot:
     SetFP
     PushReturnValue     0       # return value
@@ -222,45 +227,28 @@ boot:
     lw a7, exit_code
     li a0, 0
     ecall
-    
-    .macro    Invoke      $address
-	#saves jump address to ra
-    jal           next
-    next:
-        mv            t1, ra
-        addi          t1, t1, 16
-        sw            t1, -8(fp)
-        j             $address
-.end_macro
-    
-    
 main:
-	jal start
-	
-start:	
-	mv 	t1, ra
-	addi 	t1, t1, 20
-	sw 	t1, (sp)
-	addi	sp, sp, -4
-	j 	cond
-	
-cond:
-	PushImm 1
-	PushImm 0
-	CompGT
-	JumpTrue body
-	j exit
-body:
-	
-	#clean up body 
-
-	lw 	ra, 4(sp)
-	jalr 	zero, ra, 0
-exit:
-	
-	
-	
-	
-	
-	
-    
+    PushImm     10
+    Reserve 4
+    Discard 4
+    #print expression
+    PushRel     (12)
+    Print
+    Reserve 4
+    Discard 4
+    #print expression
+    PrintNewLine
+    Reserve 4
+    Discard 4
+    #print expression
+    PrintNewLine
+    Reserve 4
+    Discard 4
+    #print expression
+    PushRel     (12)
+    Print
+    Reserve 4
+    Discard 4
+null    PopRel 0
+    Discard 4
+    Return
