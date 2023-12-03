@@ -57,9 +57,10 @@ int main() {
 		int b := -10;
 		if (true) then {
 			int c := -9;
-			print c
+			b := 100;
+			print c;
+			print b
 		} else {skip};
-		print c
 	} else {skip}
 }
 

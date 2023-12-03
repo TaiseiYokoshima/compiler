@@ -416,6 +416,12 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         // from here is block
         for (int i = 0; i < ctx.ene.size(); ++i) {
             String output = visit(ctx.ene.get(i));
+
+            if (i == ctx.ene.size() - 1 && output == null) {
+                throw new RuntimeException("The last expression of a block or a body cannot end with \";\".");
+            }
+
+
             sb.append(output);
             if (i != ctx.ene.size() - 1) {
                 sb.append("""
@@ -503,36 +509,11 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         StringBuilder sb = new StringBuilder();
         sb.append(visit(ctx.exp()));
 
-        Integer offset = null;
-
-
-        for (int i = blockVars.size() - 1; i >= 0; i--) {
-            Map<String, Integer> block = blockVars.get(i);
-
-            if (block.isEmpty()) {
-                continue;
-            }
-
-
-            int max = Collections.max(block.values());
-            System.out.println("max: " + max);
-            offset = Collections.max(block.values()) + 4;
-            System.out.println("offset: " + offset );
-
-            break;
-        }
-
-        if (offset == null) {
-            offset = (localVars.isEmpty()) ? 12 : Collections.max(localVars.values()) + 4;
-
-        }
+        Integer offset = getNextOffset();
         this_block.put(var_name, offset);
         sb.append("""
             Reserve 4
         """);
-
-
-
         return sb.toString();
 
     }
