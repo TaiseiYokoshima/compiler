@@ -60,7 +60,7 @@ int main() {
 			b := 100;
 			print c;
 			print b
-		} else {skip};
+		} else {skip}
 	} else {skip}
 }
 

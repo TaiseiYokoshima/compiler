@@ -47,7 +47,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             .end_macro
                 
             .macro    PushReturnValue $int
-                #saves previous fp address	
+                #saves previous fp address
                 sw fp, -4(sp)
                 #sets fp to new stack
                 SetFP
@@ -118,14 +118,14 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 or t1, t1, t2
                 sw t1, (sp)
                 addi sp, sp, -4
-            .end_macro                  
+            .end_macro
 
             .macro AndBinop
                 Popt1t2
                 and t1, t1, t2
                 sw t1, (sp)
                 addi sp, sp, -4
-            .end_macro         
+            .end_macro
 
             .macro XorBinop
                 Popt1t2
@@ -214,7 +214,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 li              a7, 4
                 la              a0, newline
                 ecall
-            .end_macro             
+            .end_macro
             """;
 
     // This records the offset of each parameter: fp + n
@@ -255,37 +255,36 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                         
                 """);
 
-        for (int i = 0; i < args.length; i++) {
+        for (String s : args) {
 
-            if (args[i].equals("true")) {
-
-                sb.append("""
-                    PushImm     1
-                """);
-
-            } else if (args[i].equals("false")) {
+            if (s.equals("true")) {
 
                 sb.append("""
-                    PushImm     0
-                """);
+                            PushImm     1
+                        """);
+
+            } else if (s.equals("false")) {
+
+                sb.append("""
+                            PushImm     0
+                        """);
 
             } else {
 
                 try {
-                    int arg = Integer.parseInt(args[i]);
+                    int arg = Integer.parseInt(s);
 
                     if (arg > 0) {
                         sb.append(String.format("""
-                            PushImm     %d
-                        """, arg)
+                                    PushImm     %d
+                                """, arg)
                         );
                     } else {
                         sb.append(String.format("""
-                            PushImmNeg     %d
-                        """, (arg * -1))
+                                    PushImmNeg     %d
+                                """, (arg * -1))
                         );
                     }
-
 
 
                 } catch (NumberFormatException nfe) {
@@ -297,7 +296,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         }
 
         sb.append("""
-            Invoke      main  
+            Invoke      main
             lw a7, exit_code
             li a0, 0
             ecall
@@ -307,7 +306,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             sb.append(visit(ctx.dec().get(i)));
         }
 
-        return (stackMachineMacros + sb.toString());
+        return (stackMachineMacros + sb);
     }
 
     @Override public String visitProg(SimpleLangParser.ProgContext ctx)
@@ -335,7 +334,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append("""
             PopRel 0
             Discard 4
-            Return        
+            Return
         """);
 
         localVars.clear();
@@ -413,7 +412,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         blockVars.add(map);
 
-        // from here is block
+
         for (int i = 0; i < ctx.ene.size(); ++i) {
             String output = visit(ctx.ene.get(i));
 
@@ -534,19 +533,13 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             ));
         }
 
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(visit(ctx.exp()));
-        sb.append(String.format("""
-            PopRel      (%d)
-        """, offset)
-        );
-
-        sb.append("""
-            Reserve 4
-        """);
-
-        return sb.toString();
+        return visit(ctx.exp()) +
+                String.format("""
+                    PopRel      (%d)
+                """, offset) +
+                """
+                    Reserve     4
+                """;
     }
 
     public String block_variable_reassign(SimpleLangParser.ReassignExprContext ctx) {
@@ -571,21 +564,14 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             ));
         }
 
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(visit(ctx.exp()));
-
-        sb.append(String.format("""
-            PopRel      (%d)
-        """, offset)
-        );
-
-        sb.append("""
-            Reserve 4
-        """);
-        return sb.toString();
+        return visit(ctx.exp()) +
+                String.format("""
+                    PopRel      (%d)
+                """, offset) +
+                """
+                    Reserve     4
+                """;
     }
-
     @Override public String visitBinOpExpr(SimpleLangParser.BinOpExprContext ctx)
     {
 
@@ -595,88 +581,65 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append(visit(ctx.exp(1)));
 
         switch (((TerminalNode) (ctx.binop().getChild(0))).getSymbol().getType()) {
-            case SimpleLangParser.Eq -> {
-                sb.append("""
-                    CompEq
-                """
-                );
+            case SimpleLangParser.Eq -> sb.append("""
+                CompEq
+            """
+            );
 
-            }
-            case SimpleLangParser.Less -> {
+            case SimpleLangParser.Less -> sb.append("""
+                CompGE
+                Invert
+            """
+            );
 
-                sb.append("""
-                    CompGE
-                    Invert
-                """
-                );
+            case SimpleLangParser.LessEq -> sb.append("""
+                CompGT
+                Invert
+            """
+            );
 
-            }
+            case SimpleLangParser.Greater -> sb.append("""
+                CompGT
+            """
+            );
 
-            case SimpleLangParser.LessEq -> {
+            case SimpleLangParser.GreaterEq -> sb.append("""
+                CompGE
+            """
+            );
 
-                sb.append("""
-                    CompGT
-                    Invert
-                """
-                );
+            case SimpleLangParser.And -> sb.append("""
+                AndBinop
+            """);
 
-            }
-            case SimpleLangParser.Greater -> {
-                sb.append("""
-                    CompGT
-                """
-                );
-            }
-            case SimpleLangParser.GreaterEq -> {
-                sb.append("""
-                    CompGE
-                """
-                );
-            }
-            case SimpleLangParser.And -> {
-                sb.append("""
-                    AndBinop
-                """);
-            }
-            case SimpleLangParser.Or -> {
-                sb.append("""
-                    OrBinop        
-                """);
-            }
-            case SimpleLangParser.Xor -> {
-                sb.append("""
-                    XorBinop
-                """);
-            }
-            case SimpleLangParser.Plus -> {
+            case SimpleLangParser.Or -> sb.append("""
+                OrBinop
+            """);
 
-                sb.append("""
-                    Plus
-                """
-                );
+            case SimpleLangParser.Xor -> sb.append("""
+                XorBinop
+            """);
 
-            }
-            case SimpleLangParser.Minus -> {
-                sb.append("""
-                    Minus
-                """
-                );
-            }
-            case SimpleLangParser.Times -> {
-                sb.append("""
-                    Times
-                """
-                );
-            }
-            case SimpleLangParser.Divide -> {
-                sb.append("""
-                    Divide        
-                """);
-            }
-            default -> {
-                throw new RuntimeException("Shouldn't be here - wrong binary operator.");
-            }
+            case SimpleLangParser.Plus -> sb.append("""
+                Plus
+            """
+            );
 
+            case SimpleLangParser.Minus -> sb.append("""
+                Minus
+            """
+            );
+
+            case SimpleLangParser.Times -> sb.append("""
+                Times
+            """
+            );
+
+            case SimpleLangParser.Divide -> sb.append("""
+                Divide
+            """);
+
+            default -> throw new RuntimeException("Shouldn't be here - wrong binary operator.");
         }
         return sb.toString();
     }
@@ -766,7 +729,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             sw      t1, (sp)
             addi    sp, sp, -4
             j %s
-        %s:         
+        %s:
         """,startLabel, startLabel, condLabel, condLabel
         ));
 
@@ -828,26 +791,20 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     }
     @Override public String visitSpaceExpr(SimpleLangParser.SpaceExprContext ctx)
     {
-        StringBuilder sb = new StringBuilder();
-        sb.append("""
-            Reserve 4
-        """);
-        return sb.toString();
+        return """
+                    Reserve     4
+                """;
     }
 
     @Override public String visitNewLineExpr(SimpleLangParser.NewLineExprContext ctx) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("""
-            Reserve 4
-        """);
-        return sb.toString();
+        return """
+                    Reserve     4
+                """;
     }
     @Override public String visitSkipExpr(SimpleLangParser.SkipExprContext ctx) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("""
-            Reserve 4
-        """);
-        return sb.toString();
+        return """
+                    Reserve     4
+                """;
     }
     @Override public String visitIdExpr(SimpleLangParser.IdExprContext ctx)
     {
@@ -864,14 +821,9 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             ));
         }
 
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(String.format("""
-            PushRel     (%d)
-        """, offset)
-        );
-
-        return sb.toString();
+        return String.format("""
+                    PushRel     (%d)
+                """, offset);
     }
     public String visitIdExprBlock(SimpleLangParser.IdExprContext ctx) {
         StringBuilder sb = new StringBuilder();
