@@ -36,6 +36,7 @@ exp
     | Print exp                                             #PrintExpr
     | Space                                                 #SpaceExpr
     | NewLine                                               #NewLineExpr
+    | Skip                                                  #SkipExpr
     | Idfr                                                  #IdExpr
     | IntLit                                                #IntExpr
     | BoolLit                                               #BoolExpr
@@ -100,5 +101,6 @@ UnitType    : 'unit' ;
 
 BoolLit     : 'true' | 'false' ;
 IntLit      : '0' | ('-'? [1-9][0-9]*) ;
+Skip        : 'skip' ;
 Idfr        : [a-z][A-Za-z0-9_]* ;
 WS          : [ \n\r\t]+ -> skip ;

@@ -8,9 +8,7 @@
         mv            fp, sp
 .end_macro
 
-.macro    Invoke      $address $int
-	PushReturnValue $int
-
+.macro    Invoke      $address 
 	#saves jump address to ra
         jal           next
     next:
@@ -38,9 +36,9 @@
 	#resets sp
 	mv sp, fp
 	#sets sp to one lower than the RV on the stack
-	addi sp, sp -4
+	addi sp, sp, -4
 	
-	#load return adress to ra
+	#load return address to ra
 	lw ra, -8(fp)
 	
 	#load previous fp 
@@ -111,10 +109,34 @@
 	addi	sp, sp, $bytes
 .end_macro
 
+.macro    Plus
+        Popt1t2
+        add           t1, t1, t2
+        sw            t1, (sp)
+        addi          sp, sp, -4
+.end_macro
+
+.macro    Popt1t2
+        lw            t1, 4(sp)
+        addi          sp, sp, 4
+        lw            t2, 4(sp)
+        addi          sp, sp, 4
+.end_macro
+
+.macro    Times
+        Popt1t2
+        mul           t1, t1, t2
+        sw            t1, (sp)
+        addi          sp, sp, -4
+.end_macro
+
 
 .text
 boot:	
 	#Pushes return value and calls the function
+	PushReturnValue 0
+	PushImm 10
+	PushImm 9
 	Invoke main 0
 	
 	#prints return value
@@ -124,21 +146,18 @@ boot:
 	li a0, 0
 	ecall
 	
-main:	
-	#local variables
-	PushImmNeg 10
-	PushImm 9
-	
+main:		
 	#prints local variables
 	PrintInt 0
 	PrintInt 1
 	
-	#pushes return value and calls the function 
-	Invoke func 70
+	PushImm 10
+	PushImm 100
+	Plus
+	PushImm 2
+	Times
 	
-	#prints return value
-	PrintReturnValue print_func	
-	
+	PrintInt 2
 	Return
 
 func:

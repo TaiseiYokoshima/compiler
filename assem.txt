@@ -1,3 +1,92 @@
+
+int main() {
+	int x := 0;
+	print x;
+	if (true) then {
+		int x := -10;
+		print x;
+		if (true) then {
+			int x := -20;
+			print x;
+			if (true) then {
+				int x := -30;
+				print x
+			} else {skip}
+		} else {skip}
+	} else {skip}
+}
+
+
+
+int main() {
+	int x := 0;
+	print x;
+	if (true) then {
+		x := -10;
+		print x;
+		if (true) then {
+			x := -20;
+			print x;
+			if (true) then {
+				x := -30;
+				print x
+			} else {skip}
+		} else {skip}
+	} else {skip};
+	print x
+}
+
+
+
+int main() {
+	int a := 0;
+	print a;
+	if (true) then {
+		int b := -10;
+		if (true) then {
+			int c := -9;
+			print c
+		} else {skip};
+		print c
+	} else {skip}
+}
+
+
+
+
+
+
+
+RV <- fp
+PFP
+RA
+x = 0
+x = 10
+x = 20
+x = 30
+
+
+
+int main() {
+	if (true ^ true) then {
+		print 10
+	} else {};
+	10
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 bnez <reg1>, <label> | check if register value is greater than 0. if so jump to label
 bge <reg1>, <reg2>, <label> | jump to label if reg1 >= reg2
 blt <reg1>, <reg2>, <label> | jump to label if reg1 < reg2
@@ -20,12 +109,27 @@ PopRel <offset>| pop the top element of the stack and store it to one of local v
 SetFP
 
 
-function call steps | PushReturnValue -> Invoke <func_label_name> |
+Stack order:
+1. Return Value (RV) <- fp
+2. Previous Frame Pointer (PFP)
+3. Return Address (RA)
+4. arg 1
+5. arg 2
+6. local 1
+7. exp 
+8.    <- sp
+
+
+5. free memory <-sp
+
+
+
+function call steps | Invoke <func_label_name> <Initial Return Value> |
 1. prerequisite procedures:
 	1. stores current fp address address(RV)+4
 	2. sets fp to sp
 	3. return value pushed with placeholder value
-2. invoking func
+2. jumping and linking
 	1. loads return address to ra with jal
 	2. offsets return address by 16
 	3. stores return address to RA on the stack
@@ -55,20 +159,52 @@ tasks:
 2. binary operations
 3. 
 
-int main () {
-	int x = 10;
-	int y = 9;
-	int z = ((10 + 100) / 2);
+int main (int x, int y) {
+	print x;
+	print y;
+
+	int z := ((10 + 100) * 2); 
+	print z;
 	z
+}
+
+Stack order:
+1. Return Value (RV) <- fp
+2. Previous Frame Pointer (PFP)
+3. Return Address (RA)
+4. arg 1
+5. arg 2
+6. local 1
+7. var in then block
+8. local 2
+9. free <- sp
+
+
+
+
+int main (int y) {
+	y := (y + 100);
+	print y
 }
 
 
 
+int main () {
+	print (100 > 0)
+}
 
 
 
+int main() {
+	int x := func();
+	print x
+}
 
 
+int func() {
+	int y := 100;
+	100	
+}
 
 
 
