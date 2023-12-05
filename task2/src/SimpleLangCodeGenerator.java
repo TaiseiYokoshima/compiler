@@ -7,19 +7,56 @@ import java.util.HashMap;
 import java.util.Map;
 
 
+
+
 public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> implements SimpleLangVisitor<String>
 {
     private static final String stackMachineMacros = """
+            .macro Terminate
+            	lw 	          a7, exit_code
+            	lw            a0, (fp)
+            	ecall
+            .end_macro
+                        
             .macro    PushImm     $number
                 li            t1, $number
                 sw            t1, (sp)
                 addi          sp, sp, -4
             .end_macro
-            
+                        
             .macro    PushImmNeg     $number
                 li            t1, -$number
                 sw            t1, (sp)
                 addi          sp, sp, -4
+            .end_macro
+                        
+            .macro PushVar $index
+            	#calculates offset
+            	li 	t0, 12
+            	li	t1, 4
+            	li	t2, $index
+            	mul	t1, t1, t2
+            	add	t0, t0, t1
+            	
+            	#turns it to negative
+            	li	t1, -1
+            	mul	t0, t0, t1
+            	
+            	#applies the offset
+            	add	t0, t0, fp
+            	
+            	#retrives the value at offset + fp to  t0
+            	lw	t0, 0(t0)
+            	
+            	#saves the value to sp
+            	sw	t0, (sp)
+            	addi	sp, sp, -4
+            .end_macro
+            
+            .macro PushVarOffset    $offset
+                lw      t0, -$offset(fp)
+                sw      t0, (sp)
+                addi    sp, sp, -4
             .end_macro
                                
             .macro    PushRel     $offset
@@ -34,27 +71,16 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 sw            t1, -$offset(fp)
             .end_macro
                             
-            .macro    Reserve     $bytes
-                addi          sp, sp, -$bytes
+            .macro    Reserve
+                addi          sp, sp, -4
             .end_macro
                                 
-            .macro    Discard     $bytes
-                addi          sp, sp, $bytes
+            .macro    Discard
+                addi          sp, sp, 4
             .end_macro
                                 
             .macro    SetFP
                 mv            fp, sp
-            .end_macro
-                
-            .macro    PushReturnValue $int
-                #saves previous fp address
-                sw fp, -4(sp)
-                #sets fp to new stack
-                SetFP
-                #pushes return Value
-                PushImm $int
-                #moves down sp to arg sec
-                addi sp, sp, -8
             .end_macro
                                 
             .macro    SaveFP
@@ -67,50 +93,50 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 addi          sp, sp, 4
             .end_macro
                                 
-            .macro    Popt1t2
-                lw            t2, 4(sp)
-                addi          sp, sp, 4
-                lw            t1, 4(sp)
-                addi          sp, sp, 4
+            .macro	Popt1t2
+                lw	        t2, 4(sp)
+                lw	        t1, 8(sp)
+                addi	    sp, sp, 8
             .end_macro
                     
-            .macro    CompGT
+            .macro	CompGT $s
                 Popt1t2
-                li            t0, 1
-                sw            t0, (sp)
-                bgt           t1, t2, exit
-                sw            zero, (sp)
-            exit:
-                addi          sp, sp, -4
+                li	t0, 0
+                blt	t1, t2, compgt_exit$s
+                beq	t1, t2, compgt_exit$s
+                li	t0, 1
+            compgt_exit$s:
+                sw	t0, (sp)
+                addi sp, sp, -4
             .end_macro
                                 
-            .macro    CompGE
+            .macro    CompGE  $s
                 Popt1t2
+                li            t0, 0
+                blt           t1, t2, compge_exit$s
                 li            t0, 1
+            compge_exit$s:
                 sw            t0, (sp)
-                bge           t1, t2, exit
-                sw            zero, (sp)
-            exit:
                 addi          sp, sp, -4
             .end_macro
                             
-            .macro    CompEq
+            .macro    CompEQ    $s
                 Popt1t2
-                li            t0, 1
-                sw            t0, (sp)
-                beq           t1, t2, exit
-                sw            zero, (sp)
-            exit:
-                addi          sp, sp, -4
+                li	t0, 0
+                beq	t1, t2, compeq_exit$s
+                li	t0, 1
+            compeq_exit$s:
+                sw	t0, (sp)
+                addi sp, sp, -4
             .end_macro
                                 
-            .macro    Invert
-                lw            t1, 4(sp)
-                li            t0, 1
-                sw            t0, 4(sp)
-                beqz          t1, exit
-                sw            zero, 4(sp)
-            exit:
+            .macro Invert $s
+                lw	t1, 4(sp)
+                li	t0, 1
+                beqz	t1, invert_exit$s
+                li	t0, 0
+            invert_exit$s:
+                sw	t0, 4(sp)
             .end_macro
                                
             .macro OrBinop
@@ -134,18 +160,18 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 addi sp, sp, -4
             .end_macro
 
-            .macro    Plus
+            .macro Plus
                 Popt1t2
-                add           t1, t1, t2
-                sw            t1, (sp)
-                addi          sp, sp, -4
+                add	t0, t1, t2
+                sw	t0, (sp)
+                addi	sp, sp, -4
             .end_macro
                                 
-            .macro    Minus
+            .macro Minus
                 Popt1t2
-                sub           t1, t1, t2
-                sw            t1, (sp)
-                addi          sp, sp, -4
+                sub	t0, t1, t2
+                sw	t0, (sp)
+                addi	sp, sp, -4
             .end_macro
                                 
             .macro    Times
@@ -154,7 +180,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 sw            t1, (sp)
                 addi          sp, sp, -4
             .end_macro
-            
+                        
             .macro    Divide
                 Popt1t2
                 div           t1, t1, t2
@@ -173,35 +199,66 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 j             $address
             exit:
             .end_macro
-                                
-            .macro    Invoke      $address
-            	#saves jump address to ra
-                jal           next
-                next:
-                    mv            t1, ra
-                    addi          t1, t1, 16
-                    sw            t1, -8(fp)
-                    j             $address
+                        
+            .macro JumpToElse $label_name
+            	#consume the value of the logical binary operation
+            	lw	t0, 4(sp)
+            	addi	sp, sp, 4
+            	#jumps to else label if the condition is zero
+            	beqz	t0, $label_name
+            .end_macro
+                        
+            .macro ArgSetStart
+            	addi	sp, sp, -12
+            .end_macro
+                        
+            .macro ArgSetEnd  $num_of_args
+            	li	t1, $num_of_args
+            	li	t2, 4
+            	mul	t1, t1, t2
+            	addi	t1, t1, 12
+            	add	sp, sp, t1
+            .end_macro
+                        
+            .macro PrepareFunc $num_of_args
+            	sw 	fp, -4(sp)
+            	SetFP
+            	PushImm	0
+            	addi 	sp, sp, -8
+            	
+            	li	t0, 4
+            	li	t1, $num_of_args
+            	mul	t0, t0, t1
+            	sub	sp, sp, t0
             .end_macro
                                 
-            .macro    Return
+            .macro Invoke $func_name
+            	jal 	next
+            next:
+            	mv	t1, ra
+            	addi 	t1, t1, 16
+            	sw	t1, -8(fp)
+            	j	$func_name
+            .end_macro
+                                
+            .macro Return
+            	#retrieves the top of the stack and stores it to rv
+            	lw	t0, 4(sp)
+            	sw	t0, 0(fp)
+            	#retrieves ra
+            	lw	ra, -8(fp)
             	#resets sp
-            	mv sp, fp
-            	#sets sp to one lower than the RV on the stack
-            	addi sp, sp, -4
-            	#load return address to ra
-            	lw ra, -8(fp)
-            	#load previous fp
-            	lw fp, -4(fp)
-            	#exits by jumping to the address stored at ra
-            	jalr zero, ra, 0
+            	addi	sp, fp, -4
+            	#retrives previous fp and set it to fp
+            	lw 	fp, -4(fp)
+            	jalr	zero, ra, 0
             .end_macro
                                 
-            .macro    Print
-                li            a7, 1
-                lw            a0, 4(sp)
-                addi          sp, sp, 4
-                ecall
+            .macro	Print
+            	lw 	a7, print_int_code
+            	lw	a0, 4(sp)
+            	ecall
+            	PrintNewLine
             .end_macro
                                 
             .macro    PrintSpace
@@ -209,11 +266,11 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 li            a0, 32
                 ecall
             .end_macro
-            
+                        
             .macro PrintNewLine
-                li              a7, 4
-                la              a0, newline
-                ecall
+            	lw	a7, print_str_code
+            	la	a0, newline
+            	ecall
             .end_macro
             """;
 
@@ -230,9 +287,22 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     public String visitProgram(SimpleLangParser.ProgContext ctx, String[] args)
     {
         StringBuilder sb = new StringBuilder();
+        String os_name = System.getProperty("os.name").toLowerCase();
 
-        // return value
-        sb.append("""
+        if(os_name.contains("win")) {
+            sb.append("""
+                .data
+                    n: .word 100
+                    terminate: .string "terminated with: "
+                    print_func: .string "terminated func with: "
+                    newline: .string "\\n"
+                   
+                    exit_code: .word 93
+                    print_int_code: .word 1
+                    print_str_code: .word 4
+                """);
+        } else if(os_name.contains("nux") || os_name.contains("nix")) {
+            sb.append("""
                 .data
                     n: .word 100
                     terminate: .string "terminated with: "
@@ -242,82 +312,89 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                     exit_code: .word 10
                     print_int_code: .word 1
                     print_str_code: .word 4
-                        
-                        
-                        
-                .text
-                                
-                # bootstrap loader that runs main()
-                        
-                boot:
-                    SetFP
-                    PushReturnValue     0       # return value
-                        
                 """);
-
-        for (String s : args) {
-
-            if (s.equals("true")) {
-
-                sb.append("""
-                            PushImm     1
-                        """);
-
-            } else if (s.equals("false")) {
-
-                sb.append("""
-                            PushImm     0
-                        """);
-
-            } else {
-
-                try {
-                    int arg = Integer.parseInt(s);
-
-                    if (arg > 0) {
-                        sb.append(String.format("""
-                                    PushImm     %d
-                                """, arg)
-                        );
-                    } else {
-                        sb.append(String.format("""
-                                    PushImmNeg     %d
-                                """, (arg * -1))
-                        );
-                    }
-
-
-                } catch (NumberFormatException nfe) {
-                    throw new RuntimeException(nfe);
-                }
-
-            }
-
         }
 
         sb.append("""
+            
+            # code below:
+            .text
+                # bootstrap loader that runs main()
+            boot:
+                SetFP
+                
+            """);
+
+
+
+
+
+        for(int i = 0; i < args.length; i++) {
+            if (i == 0) {
+                sb.append("""
+                            ArgSetStart
+                        """);
+            }
+
+            String s = args[i];
+            if (s.equals("true")) {
+                sb.append("""
+                            PushImm     1
+                        """);
+            } else if (s.equals("false")) {
+                sb.append("""
+                            PushImm     0
+                        """);
+            } else {
+                try {
+                    int arg = Integer.parseInt(s);
+                    sb.append(pushInt(arg));
+                } catch (NumberFormatException nfe) {
+                    throw new RuntimeException(nfe);
+                }
+            }
+
+            if (i == args.length - 1) {
+                sb.append(String.format("""
+                    ArgSetEnd     %d
+                """, args.length
+                ));
+            }
+        }
+
+        sb.append(String.format("""
+            PrepareFunc     %d
             Invoke      main
-            lw a7, exit_code
-            li a0, 0
-            ecall
-        """);
+            Terminate
+        """, args.length
+        ));
 
         for (int i = 0; i < ctx.dec().size(); ++i) {
             sb.append(visit(ctx.dec().get(i)));
         }
-
         return (stackMachineMacros + sb);
     }
+    public String pushInt(int value) {
+        StringBuilder sb = new StringBuilder();
+        if (value > 0 || value == 0) {
+            sb.append(String.format("""
+                PushImm     %d
+            """, value)
+            );
+        } else {
+            sb.append(String.format("""
+                PushImmNeg     %d
+            """, (value * -1))
+            );
+        }
+        return sb.toString();
+    }
 
-    @Override public String visitProg(SimpleLangParser.ProgContext ctx)
-    {
+    @Override public String visitProg(SimpleLangParser.ProgContext ctx) {
         throw new RuntimeException("Should not be here!");
     }
-    @Override public String visitDec(SimpleLangParser.DecContext ctx)
-    {
-
+    @Override public String visitDec(SimpleLangParser.DecContext ctx) {
         StringBuilder sb = new StringBuilder();
-
         sb.append(String.format("""
         %s:
         """, ctx.typed_idfr(0).Idfr().getText())
@@ -325,15 +402,13 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         for (int i = 0; i < ctx.vardec.size(); ++i) {
             String var_name = ctx.vardec.get(i).Idfr().getText();
-            localVars.put(var_name, 12 + (i * 4));
+            localVars.put(var_name, i);
         }
 
         sb.append(visit(ctx.body()));
 
 
         sb.append("""
-            PopRel 0
-            Discard 4
             Return
         """);
 
@@ -365,17 +440,16 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             sb.append(output);
             if (i != ctx.ene.size() - 1) {
                 sb.append("""
-                    Discard 4
+                    Discard
                 """
                 );
             }
         }
 
         return sb.toString();
-
     }
     public Integer getNextOffset() {
-        Integer offset = null;
+        Integer index = null;
         for (int i = blockVars.size() - 1; i >= 0; i--) {
             Map<String, Integer> block = blockVars.get(i);
 
@@ -383,15 +457,14 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 continue;
             }
 
-            int max = Collections.max(block.values());
-            offset = Collections.max(block.values()) + 4;
+            index = Collections.max(block.values()) + 1;
             break;
         }
 
-        if (offset == null) {
-            offset = (localVars.isEmpty()) ? 12 : Collections.max(localVars.values()) + 4;
+        if (index == null) {
+            index = (localVars.isEmpty()) ? 0 : Collections.max(localVars.values()) + 1;
         }
-        return offset;
+        return index;
     }
 
 
@@ -410,24 +483,23 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             sb.append(output);
             if (i != ctx.ene.size() - 1) {
                 sb.append("""
-                    Discard 4
+                    Discard
                 """
                 );
             }
         }
 
-
         if (!map.isEmpty()) {
-            Integer min_offset = Collections.min(map.values());
-            Integer sp_address = min_offset + 4;
+            int sp_address = 4 * map.size();
+            int RV_address = sp_address + 4;
             sb.append(String.format("""
-                    #loads value at the top of stack
+                    #loads value at the top of stack (return value)
                     lw t1, 4(sp)
-                    #saves it to the rv of the block
-                    sw t1, -%d(fp)
-                    #resets the sp
-                    addi sp, fp, -%d
-                """, min_offset, sp_address
+                    #saves return value to the RV of the block
+                    sw t1, %d(sp)
+                    #resets sp
+                    addi sp, sp, %d
+                """, RV_address, sp_address
             ));
         }
         blockVars.remove(blockVars.size() - 1);
@@ -450,11 +522,11 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         StringBuilder sb = new StringBuilder();
         sb.append(visit(ctx.exp()));
 
-        Integer offset = (localVars.isEmpty()) ? 12 : Collections.max(localVars.values()) + 4;
-        localVars.put(var_name, offset);
+        Integer index = (localVars.isEmpty()) ? 0 : Collections.max(localVars.values()) + 1;
+        localVars.put(var_name, index);
 
         sb.append("""
-            Reserve 4
+            Reserve
         """);
         return sb.toString();
     }
@@ -473,7 +545,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         Integer offset = getNextOffset();
         this_block.put(var_name, offset);
         sb.append("""
-            Reserve 4
+            Reserve
         """);
         return sb.toString();
 
@@ -500,7 +572,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                     PopRel      (%d)
                 """, offset) +
                 """
-                    Reserve     4
+                    Reserve
                 """;
     }
 
@@ -528,10 +600,10 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         return visit(ctx.exp()) +
                 String.format("""
-                    PopRel      (%d)
+                    PopRel      %d
                 """, offset) +
                 """
-                    Reserve     4
+                    Reserve
                 """;
     }
     @Override public String visitBinOpExpr(SimpleLangParser.BinOpExprContext ctx)
@@ -541,32 +613,32 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append(visit(ctx.exp(1)));
 
         switch (((TerminalNode) (ctx.binop().getChild(0))).getSymbol().getType()) {
-            case SimpleLangParser.Eq -> sb.append("""
-                CompEq
-            """
-            );
+            case SimpleLangParser.Eq -> sb.append(String.format("""
+                CompEq      %d
+            """, labelCounter++
+            ));
 
-            case SimpleLangParser.Less -> sb.append("""
-                CompGE
-                Invert
-            """
-            );
+            case SimpleLangParser.Less -> sb.append(String.format("""
+                CompGE      %d
+                Invert      %d
+            """, labelCounter++, labelCounter++
+            ));
 
-            case SimpleLangParser.LessEq -> sb.append("""
-                CompGT
-                Invert
-            """
-            );
+            case SimpleLangParser.LessEq -> sb.append(String.format("""
+                CompGT      %d
+                Invert      %d
+            """, labelCounter++, labelCounter++
+            ));
 
-            case SimpleLangParser.Greater -> sb.append("""
-                CompGT
-            """
-            );
+            case SimpleLangParser.Greater -> sb.append(String.format("""
+                CompGT      %d
+            """, labelCounter++
+            ));
 
-            case SimpleLangParser.GreaterEq -> sb.append("""
-                CompGE
-            """
-            );
+            case SimpleLangParser.GreaterEq -> sb.append(String.format("""
+                CompGE      %d
+            """, labelCounter++
+            ));
 
             case SimpleLangParser.And -> sb.append("""
                 AndBinop
@@ -607,19 +679,29 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     @Override public String visitInvokeExpr(SimpleLangParser.InvokeExprContext ctx)
     {
         StringBuilder sb = new StringBuilder();
-
-        // return value
-        sb.append("""
-            PushReturnValue 0       # return value
-        """);
+        int num_args = ctx.args.size();
 
         for (int i = 0; i < ctx.args.size(); i++) {
+            if (i == 0) {
+                sb.append("""
+                    ArgSetStart
+                """);
+            }
+
             sb.append(visit(ctx.args.get(i)));
+
+            if (i == ctx.args.size() - 1) {
+                sb.append(String.format("""
+                    ArgSetEnd %d
+                """,num_args
+                ));
+            }
         }
 
         sb.append(String.format("""
+            PrepareFunc %d
             Invoke      %s
-        """, ctx.Idfr().getText())
+        """,num_args, ctx.Idfr().getText())
         );
 
         return sb.toString();
@@ -635,23 +717,33 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     {
         StringBuilder sb = new StringBuilder();
 
+        String condLabel = String.format("cond_label_%d", labelCounter++);
+        String thenLabel = String.format("then_label_%d", labelCounter++);
         String elseLabel = String.format("else_label_%d", labelCounter++);
-        String exitLabel = String.format("exit_label_%d", labelCounter++);
-
-        sb.append(visit(ctx.exp()));
+        String end_ifLabel = String.format("end_if_label_%d", labelCounter++);
 
 
         sb.append(String.format("""
-            Invert
-            JumpTrue    %s
-        """, elseLabel)
+        %s:
+        """, condLabel
+        ));
+//        pushes output of conditional binop to stack
+        sb.append(visit(ctx.exp()));
+
+//        inverts boolean on stack and jumps to else if condition was a 0
+        sb.append(String.format("""
+            JumpToElse    %s
+        
+        %s:
+        """, elseLabel, thenLabel)
         );
 
+//        then block expressions pasted here
         sb.append(visit(ctx.block(0)));
 
         sb.append(String.format("""
-            Jump        %s
-        """, exitLabel)
+            j        %s
+        """, end_ifLabel)
         );
 
         sb.append(String.format("""
@@ -663,7 +755,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         sb.append(String.format("""
         %s:
-        """, exitLabel)
+        """, end_ifLabel)
         );
 
         return sb.toString();
@@ -778,37 +870,37 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         }
 
         sb.append("""
-            Reserve 4
+            Reserve
         """);
 
         return sb.toString();
     }
     @Override public String visitSpaceExpr(SimpleLangParser.SpaceExprContext ctx) {
         return """
-                    Reserve     4
+                    Reserve
                 """;
     }
 
     @Override public String visitNewLineExpr(SimpleLangParser.NewLineExprContext ctx) {
         return """
-                    Reserve     4
+                    Reserve
                 """;
     }
     @Override public String visitSkipExpr(SimpleLangParser.SkipExprContext ctx) {
         return """
-                    Reserve     4
+                    Reserve
                 """;
     }
     @Override public String visitIdExpr(SimpleLangParser.IdExprContext ctx)
     {
-        if (!blockVars.isEmpty()) {
-            return visitIdExprBlock(ctx);
-        }
+//        if (!blockVars.isEmpty()) {
+//            return visitIdExprBlock(ctx);
+//        }
 
         String var_name = ctx.getText();
-        Integer offset = localVars.get(var_name);
+        Integer index = localVars.get(var_name);
 
-        if (offset == null) {
+        if (index == null) {
             throw new RuntimeException(String.format(
                     "Variable (int) : \"%s\" has not been initialized but is referenced", var_name
             ));
@@ -816,8 +908,8 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("""
-                    PushRel     (%d)
-                """, offset));
+                    PushVar     %d
+                """, index));
         return sb.toString();
     }
     public String visitIdExprBlock(SimpleLangParser.IdExprContext ctx) {

@@ -103,6 +103,45 @@ int main(int n)
 
 
 
+int main() {
+	func(1)
+}
+
+int func(int x) {
+	print x;
+	print newline;
+	if (x > 0) then {( func((x - 1)) + func((x - 2)) )} else {x};
+	print x
+}
+
+___________
+
+
+int main() {
+	func(20)
+}
+
+int func(int x) {
+	if (x > 0) then {( func((x - 1)) + func((x - 2)) )} else {x}
+}
+
+
+int main() {
+	func(10)
+}
+
+int func(int x) {
+	if (true) then {
+		int x := -6;
+		if (true) then {
+			int x := -3;
+			print x
+		} else {skip};
+		print x	
+	} else {skip};
+	print x
+}
+
 
 
 
