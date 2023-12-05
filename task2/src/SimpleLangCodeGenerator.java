@@ -1,6 +1,7 @@
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,11 +54,52 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             	addi	sp, sp, -4
             .end_macro
             
-            .macro PushVarOffset    $offset
-                lw      t0, -$offset(fp)
+            .macro PushVarBlock    $index
+                #calculates offset
+                li      t0, 8
+                li,     t1, 4
+                li,     t2, $index
+                mul     t1, t1, t2
+                add     t0, t0, t1
+                
+                #turns it to negative
+                li      t1, -1
+                mul     t0, t0, t1
+                
+                #applies the offset
+                add     t0, t0, s1
+                
+                #retrives the value at offset + s1 to to
+                lw      t0, 0(t0)
+                
+                #saves the value to sp
                 sw      t0, (sp)
                 addi    sp, sp, -4
             .end_macro
+            
+            .macro PushVarBlockID    $index
+                #calculates offset
+                li      t0, 8
+                li,     t1, 4
+                li,     t2, $index
+                mul     t1, t1, t2
+                add     t0, t0, t1
+                
+                #turns it to negative
+                li      t1, -1
+                mul     t0, t0, t1
+                
+                #applies the offset
+                add     t0, t0, t6
+                
+                #retrives the value at offset + s1 to to
+                lw      t0, 0(t0)
+                
+                #saves the value to sp
+                sw      t0, (sp)
+                addi    sp, sp, -4
+            .end_macro
+            
                                
             .macro    PushRel     $offset
                 lw            t1, -$offset(fp)
@@ -65,10 +107,50 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 addi          sp, sp, -4
             .end_macro
                                 
-            .macro    PopRel      $offset
-                lw            t1, 4(sp)
-                addi          sp, sp, 4
-                sw            t1, -$offset(fp)
+            .macro    PopRel      $index
+            	#calculates offset
+            	li 	t0, 12
+            	li	t1, 4
+            	li	t2, $index
+            	mul	t1, t1, t2
+            	add	t0, t0, t1
+            	
+            	#turns it to negative
+            	li	t1, -1
+            	mul	t0, t0, t1
+            	
+            	#applies the offset
+            	add	t0, t0, fp
+            	
+            	#retrives the value at the top of stack
+            	addi	sp, sp, 4
+            	lw	    t1, (sp)
+
+            	#saves the value to the var
+            	sw	t1, (t0)
+            .end_macro
+            
+            .macro    PopRelBlock      $index
+            	#calculates offset
+            	li 	t0, 8
+            	li	t1, 4
+            	li	t2, $index
+            	mul	t1, t1, t2
+            	add	t0, t0, t1
+            	
+            	#turns it to negative
+            	li	t1, -1
+            	mul	t0, t0, t1
+            	
+            	#applies the offset
+            	add	t0, t0, s1
+            	
+            	#retrives the value at the top of stack
+            	addi	sp, sp, 4
+            	lw	    t1, (sp)
+
+            	#saves the value to the var
+            	sw	t1, (t0)
             .end_macro
                             
             .macro    Reserve
@@ -275,11 +357,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             """;
 
     // This records the offset of each parameter: fp + n
-    private final Map<String, Integer> localVars = new HashMap<>();
-
-
-    // keeps track of variables initialized within blocks
-    private final ArrayList<Map<String, Integer>> blockVars = new ArrayList<>();
+    private final ArrayList<String> localVars = new ArrayList<>();
 
     // For simplicity, we will just use labels of the form "label_[some integer]"
     private int labelCounter = 0;
@@ -402,7 +480,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         for (int i = 0; i < ctx.vardec.size(); ++i) {
             String var_name = ctx.vardec.get(i).Idfr().getText();
-            localVars.put(var_name, i);
+            localVars.add(var_name);
         }
 
         sb.append(visit(ctx.body()));
@@ -426,7 +504,32 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         throw new RuntimeException("Should not be here!");
     }
 
-    @Override public String visitBody(SimpleLangParser.BodyContext ctx)
+    @Override public String visitWithInitializations(SimpleLangParser.WithInitializationsContext ctx)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(visit(ctx.initializations()));
+
+        for (int i = 0; i < ctx.ene.size(); ++i) {
+
+            String output = visit(ctx.ene.get(i));
+
+            if (i == ctx.ene.size() - 1 && output == null ) {
+                throw new RuntimeException("The last expression of a block or a body cannot end with \";\".");
+            }
+            sb.append(output);
+            if (i != ctx.ene.size() - 1) {
+                sb.append("""
+                    Discard
+                """
+                );
+            }
+        }
+
+        return sb.toString();
+    }
+
+    @Override public String visitNoInitializations(SimpleLangParser.NoInitializationsContext ctx)
     {
         StringBuilder sb = new StringBuilder();
 
@@ -448,38 +551,15 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
         return sb.toString();
     }
-    public Integer getNextOffset() {
-        Integer index = null;
-        for (int i = blockVars.size() - 1; i >= 0; i--) {
-            Map<String, Integer> block = blockVars.get(i);
-
-            if (block.isEmpty()) {
-                continue;
-            }
-
-            index = Collections.max(block.values()) + 1;
-            break;
-        }
-
-        if (index == null) {
-            index = (localVars.isEmpty()) ? 0 : Collections.max(localVars.values()) + 1;
-        }
-        return index;
-    }
-
-
     @Override public String visitBlock(SimpleLangParser.BlockContext ctx)
     {
         StringBuilder sb = new StringBuilder();
-        Map<String, Integer> map = new HashMap<>();
-        blockVars.add(map);
 
         for (int i = 0; i < ctx.ene.size(); ++i) {
             String output = visit(ctx.ene.get(i));
             if (i == ctx.ene.size() - 1 && output == null) {
                 throw new RuntimeException("The last expression of a block or a body cannot end with \";\".");
             }
-
             sb.append(output);
             if (i != ctx.ene.size() - 1) {
                 sb.append("""
@@ -488,80 +568,39 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 );
             }
         }
-
-        if (!map.isEmpty()) {
-            int sp_address = 4 * map.size();
-            int RV_address = sp_address + 4;
-            sb.append(String.format("""
-                    #loads value at the top of stack (return value)
-                    lw t1, 4(sp)
-                    #saves return value to the RV of the block
-                    sw t1, %d(sp)
-                    #resets sp
-                    addi sp, sp, %d
-                """, RV_address, sp_address
-            ));
-        }
-        blockVars.remove(blockVars.size() - 1);
         return sb.toString();
+    }
+
+    @Override public String visitInitializations(SimpleLangParser.InitializationsContext ctx)
+    {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ctx.iel.size(); i++ ) {
+            String var_name = ctx.iel.get(i).typed_idfr().Idfr().getText();
+
+            if (localVars.contains(var_name)) {
+                throw new RuntimeException(String.format(
+                        "Variable (int) : \"%s\" has already been initialized but is re-initialized", var_name
+                ));
+            }
+            localVars.add(var_name);
+            sb.append(visit(ctx.iel.get(i).exp()));
+            sb.append("""
+                Reserve
+            """);
+        }
+        return sb.toString();
+    }
+
+    @Override public String visitInitializeExpr(SimpleLangParser.InitializeExprContext ctx) {
+        throw new RuntimeException("should'nt be here");
     }
 
     @Override public String visitAssignExpr(SimpleLangParser.AssignExprContext ctx)
     {
-        if (!blockVars.isEmpty()) {
-            return block_variable_initialization(ctx);
-        }
-
-        String var_name = ctx.typed_idfr().Idfr().getText();
-        if (localVars.get(var_name) != null) {
-            throw new RuntimeException(String.format(
-                    "Variable (int) : \"%s\" has already been initialized but is re-initialized", var_name
-            ));
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(visit(ctx.exp()));
-
-        Integer index = (localVars.isEmpty()) ? 0 : Collections.max(localVars.values()) + 1;
-        localVars.put(var_name, index);
-
-        sb.append("""
-            Reserve
-        """);
-        return sb.toString();
-    }
-    public String block_variable_initialization(SimpleLangParser.AssignExprContext ctx) {
-        String var_name = ctx.typed_idfr().Idfr().getText();
-        Map<String, Integer> this_block = blockVars.get(blockVars.size() -1);
-        if (this_block.get(var_name) != null) {
-            throw new RuntimeException(String.format(
-                    "Variable (int) : \"%s\" has already been initialized but is re-initialized", var_name
-            ));
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(visit(ctx.exp()));
-
-        Integer offset = getNextOffset();
-        this_block.put(var_name, offset);
-        sb.append("""
-            Reserve
-        """);
-        return sb.toString();
-
-    }
-
-    @Override public String visitReassignExpr(SimpleLangParser.ReassignExprContext ctx)
-    {
-        if (!blockVars.isEmpty()) {
-            return block_variable_reassign(ctx);
-        }
-
         String var_name = ctx.Idfr().getText();
+        int index = localVars.indexOf(var_name);
 
-        Integer offset = localVars.get(var_name);
-
-        if (offset == null) {
+        if (index < 0) {
             throw new RuntimeException(String.format(
                     "Variable (int) : \"%s\" has not been initialized but is reassigned", var_name
             ));
@@ -570,41 +609,27 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         return visit(ctx.exp()) +
                 String.format("""
                     PopRel      (%d)
-                """, offset) +
+                """, index) +
                 """
                     Reserve
                 """;
     }
+    @Override public String visitIdExpr(SimpleLangParser.IdExprContext ctx)
+    {
+        String var_name = ctx.getText();
+        int index = localVars.indexOf(var_name);
 
-    public String block_variable_reassign(SimpleLangParser.ReassignExprContext ctx) {
-        String var_name = ctx.Idfr().getText();
-
-        Integer offset = null;
-        for (int i = blockVars.size() - 1; i >= 0; i--) {
-            Map<String, Integer> block = blockVars.get(i);
-            offset = block.get(var_name);
-            if (offset != null) {
-                break;
-            }
-        }
-
-        if (offset == null) {
-            offset = localVars.get(var_name);
-        }
-
-        if (offset == null) {
+        if (index < 0) {
             throw new RuntimeException(String.format(
-                    "Variable (int) : \"%s\" has not been initialized but is reassigned", var_name
+                    "Variable (int) : \"%s\" has not been initialized but is referenced", var_name
             ));
         }
 
-        return visit(ctx.exp()) +
-                String.format("""
-                    PopRel      %d
-                """, offset) +
-                """
-                    Reserve
-                """;
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("""
+                    PushVar     %d
+                """, index));
+        return sb.toString();
     }
     @Override public String visitBinOpExpr(SimpleLangParser.BinOpExprContext ctx)
     {
@@ -891,61 +916,6 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                     Reserve
                 """;
     }
-    @Override public String visitIdExpr(SimpleLangParser.IdExprContext ctx)
-    {
-//        if (!blockVars.isEmpty()) {
-//            return visitIdExprBlock(ctx);
-//        }
-
-        String var_name = ctx.getText();
-        Integer index = localVars.get(var_name);
-
-        if (index == null) {
-            throw new RuntimeException(String.format(
-                    "Variable (int) : \"%s\" has not been initialized but is referenced", var_name
-            ));
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("""
-                    PushVar     %d
-                """, index));
-        return sb.toString();
-    }
-    public String visitIdExprBlock(SimpleLangParser.IdExprContext ctx) {
-        StringBuilder sb = new StringBuilder();
-        String var_name = ctx.getText();
-        Integer offset = null;
-
-
-
-        for (int i = blockVars.size() - 1; i >= 0; i--) {
-            Map<String, Integer> block = blockVars.get(i);
-            offset = block.get(var_name);
-            if (offset != null) {
-                break;
-            }
-        }
-
-        if (offset == null) {
-            offset = localVars.get(var_name);
-        }
-
-        if (offset == null) {
-            throw new RuntimeException(String.format(
-                    "Variable (int) : \"%s\" has not been initialized but is referenced", var_name
-            ));
-        }
-
-
-        sb.append(String.format("""
-            PushRel     (%d)
-        """, offset)
-        );
-
-        return sb.toString();
-    }
-
     @Override public String visitIntExpr(SimpleLangParser.IntExprContext ctx)
     {
         StringBuilder sb = new StringBuilder();

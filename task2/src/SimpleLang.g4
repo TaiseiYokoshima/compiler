@@ -15,8 +15,25 @@ type
     : IntType | BoolType | UnitType
 ;
 
+
+
+//body
+//    : LBrace ene+=exp (Semicolon ene+=exp)* RBrace
+//;
+
 body
-    : LBrace ene+=exp (Semicolon ene+=exp)* RBrace
+    : LBrace (ene+=exp (Semicolon ene+=exp)*)?                            RBrace    #NoInitializations
+    | LBrace initializations (Semicolon ene+=exp (Semicolon ene+=exp)*)?  RBrace    #WithInitializations
+
+
+;
+
+initializations
+    : iel+=initializeExpr (Semicolon iel+=initializeExpr)*
+;
+
+initializeExpr
+    : typed_idfr Assign exp
 ;
 
 block
@@ -24,8 +41,7 @@ block
 ;
 
 exp
-    : typed_idfr Assign exp                                 #AssignExpr
-    | Idfr Assign exp                                       #ReassignExpr
+    : Idfr Assign exp                                       #AssignExpr
     | LParen exp binop exp RParen                           #BinOpExpr
     | Idfr LParen (args+=exp (Comma args+=exp)*)? RParen    #InvokeExpr
     | block                                                 #BlockExpr
@@ -36,14 +52,11 @@ exp
     | Print exp                                             #PrintExpr
     | Space                                                 #SpaceExpr
     | NewLine                                               #NewLineExpr
-    | Skip                                                  #SkipExpr
     | Idfr                                                  #IdExpr
     | IntLit                                                #IntExpr
     | BoolLit                                               #BoolExpr
+    | Skip                                                  #SkipExpr
 ;
-
-
-
 
 binop
     : Eq              #EqBinop
@@ -84,26 +97,26 @@ And         : '&';
 Or          :  '|';
 Xor         : '^';
 
-Plus        :  '+' ;
-Times       : '*' ;
-Minus       : '-' ;
-Divide      : '/' ;
+Plus        :  '+'                      ;
+Times       : '*'                       ;
+Minus       : '-'                       ;
+Divide      : '/'                       ;
 
-Assign      : ':=' ;
+Assign      : ':='                      ;
 
-Print       : 'print' ;
-Space       : 'space' ;
-NewLine     : 'newline' ;
-If          : 'if' ;
-Then        : 'then' ;
-Else        : 'else' ;
+Print       : 'print'                   ;
+Space       : 'space'                   ;
+NewLine     : 'newline'                 ;
+If          : 'if'                      ;
+Then        : 'then'                    ;
+Else        : 'else'                    ;
 
-IntType     : 'int' ;
-BoolType    : 'bool' ;
-UnitType    : 'unit' ;
+IntType     : 'int'                     ;
+BoolType    : 'bool'                    ;
+UnitType    : 'unit'                    ;
 
-BoolLit     : 'true' | 'false' ;
-IntLit      : '0' | ('-'? [1-9][0-9]*) ;
-Skip        : 'skip' ;
-Idfr        : [a-z][A-Za-z0-9_]* ;
-WS          : [ \n\r\t]+ -> skip ;
+BoolLit     : 'true' | 'false'          ;
+IntLit      : '0' | ('-'? [1-9][0-9]*)  ;
+Skip        : 'skip'                    ;
+Idfr        : [a-z][A-Za-z0-9_]*        ;
+WS          : [ \n\r\t]+ -> skip        ;

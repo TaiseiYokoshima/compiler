@@ -144,8 +144,22 @@ int func(int x) {
 
 
 
+int main() {
+	int x := 100;
+	if (true) then {
+		x := -9;
+		print x;
+		x
+	} else	{skip};
+	print x
+}
 
 
+int main () {
+	int x := 100;
+	print x;
+	x
+}
 
 
 

@@ -117,6 +117,6 @@ UnitType    : 'unit'                    ;
 
 BoolLit     : 'true' | 'false'          ;
 IntLit      : '0' | ('-'? [1-9][0-9]*)  ;
-Idfr        : [a-z][A-Za-z0-9_]*        ;
 Skip        : 'skip'                    ;
+Idfr        : [a-z][A-Za-z0-9_]*        ;
 WS          : [ \n\r\t]+ -> skip        ;
