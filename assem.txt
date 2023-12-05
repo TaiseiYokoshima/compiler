@@ -144,24 +144,66 @@ int func(int x) {
 
 
 
-int main() {
-	int x := 100;
-	if (true) then {
-		x := -9;
+ 7
+
+int main () {
+	int x := 10;
+	
+	while (x == 10) do {
 		print x;
-		x
-	} else	{skip};
-	print x
+		x := (x - 1)
+	};
+	print x;
+	-9
 }
+
 
 
 int main () {
-	int x := 100;
+	int x := 10;
+
+	repeat {
+		print x;
+		x := (x - 1)
+	} until (((x == 0) & true) & true);
+	
 	print x;
-	x
+	-9
 }
 
 
+int main(int n) {
+
+int a := 2;
+int m := n;
+bool flag := false;
+
+while ((a <= n) & (m > 1)) do {		
+  while ((m - ((m / a)*a)) == 0) do {
+    flag := true;
+    print a; print space;
+    m := (m / a)
+  };
+  if flag then {
+    print newline;
+    flag := false
+  } else {
+    skip
+  };
+  a := (a + 1)
+};
+
+0
+
+}
+
+
+
+int main() {
+	int x := 0;
+	if (x > 0) then {print x; x} else {print -9; -9};
+	-7
+}
 
 
 

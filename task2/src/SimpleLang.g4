@@ -52,10 +52,10 @@ exp
     | Print exp                                             #PrintExpr
     | Space                                                 #SpaceExpr
     | NewLine                                               #NewLineExpr
-    | Idfr                                                  #IdExpr
     | IntLit                                                #IntExpr
     | BoolLit                                               #BoolExpr
     | Skip                                                  #SkipExpr
+    | Idfr                                                  #IdExpr
 ;
 
 binop
@@ -88,10 +88,11 @@ Semicolon   : ';' ;
 RBrace      : '}' ;
 
 Eq          : '==' ;
-Less        : '<' ;
 LessEq      : '<=' ;
-Greater     : '>';
+Less        : '<' ;
 GreaterEq   : '>=';
+Greater     : '>';
+
 
 And         : '&';
 Or          :  '|';

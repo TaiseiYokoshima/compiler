@@ -204,9 +204,9 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                             
             .macro    CompEQ    $s
                 Popt1t2
-                li	t0, 0
-                beq	t1, t2, compeq_exit$s
                 li	t0, 1
+                beq	t1, t2, compeq_exit$s
+                li	t0, 0
             compeq_exit$s:
                 sw	t0, (sp)
                 addi sp, sp, -4
@@ -265,8 +265,8 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                         
             .macro    Divide
                 Popt1t2
-                div           t1, t1, t2
-                sw            t1, (sp)
+                div           t0, t1, t2
+                sw            t0, (sp)
                 addi          sp, sp, -4
             .end_macro
                     
@@ -287,6 +287,14 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             	lw	t0, 4(sp)
             	addi	sp, sp, 4
             	#jumps to else label if the condition is zero
+            	beqz	t0, $label_name
+            .end_macro
+            
+            .macro JumpToExit $label_name
+            	#consume the value of the logical binary operation
+            	lw	t0, 4(sp)
+            	addi	sp, sp, 4
+            	#jumps to exit label if the condition is zero
             	beqz	t0, $label_name
             .end_macro
                         
@@ -340,7 +348,9 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             	lw 	a7, print_int_code
             	lw	a0, 4(sp)
             	ecall
-            	PrintNewLine
+            	addi    sp, sp, 4
+            	
+            	#PrintNewLine
             .end_macro
                                 
             .macro    PrintSpace
@@ -584,19 +594,18 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
             }
             localVars.add(var_name);
             sb.append(visit(ctx.iel.get(i).exp()));
-            sb.append("""
-                Reserve
-            """);
+//            sb.append("""
+//                Reserve
+//            """);
         }
         return sb.toString();
     }
 
     @Override public String visitInitializeExpr(SimpleLangParser.InitializeExprContext ctx) {
-        throw new RuntimeException("should'nt be here");
+        throw new RuntimeException("shouldn't be here");
     }
 
-    @Override public String visitAssignExpr(SimpleLangParser.AssignExprContext ctx)
-    {
+    @Override public String visitAssignExpr(SimpleLangParser.AssignExprContext ctx) {
         String var_name = ctx.Idfr().getText();
         int index = localVars.indexOf(var_name);
 
@@ -637,10 +646,16 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append(visit(ctx.exp(0)));
         sb.append(visit(ctx.exp(1)));
 
+
         switch (((TerminalNode) (ctx.binop().getChild(0))).getSymbol().getType()) {
             case SimpleLangParser.Eq -> sb.append(String.format("""
-                CompEq      %d
+                CompEQ      %d
             """, labelCounter++
+            ));
+            case SimpleLangParser.LessEq -> sb.append(String.format("""
+                CompGT      %d
+                Invert      %d
+            """, labelCounter++, labelCounter++
             ));
 
             case SimpleLangParser.Less -> sb.append(String.format("""
@@ -648,23 +663,14 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
                 Invert      %d
             """, labelCounter++, labelCounter++
             ));
-
-            case SimpleLangParser.LessEq -> sb.append(String.format("""
-                CompGT      %d
-                Invert      %d
-            """, labelCounter++, labelCounter++
-            ));
-
-            case SimpleLangParser.Greater -> sb.append(String.format("""
-                CompGT      %d
-            """, labelCounter++
-            ));
-
             case SimpleLangParser.GreaterEq -> sb.append(String.format("""
                 CompGE      %d
             """, labelCounter++
             ));
-
+            case SimpleLangParser.Greater -> sb.append(String.format("""
+                CompGT      %d
+            """, labelCounter++
+            ));
             case SimpleLangParser.And -> sb.append("""
                 AndBinop
             """);
@@ -793,9 +799,9 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
     @Override public String visitWhileExpr(SimpleLangParser.WhileExprContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        String condLabel = String.format("cond_label_%d", labelCounter++);
-        String blockLabel = String.format("block_label_%d", labelCounter++);
-        String exitLabel = String.format("exit_label_%d", labelCounter++);
+        String condLabel = String.format("while_cond_label_%d", labelCounter++);
+        String blockLabel = String.format("while_block_label_%d", labelCounter++);
+        String exitLabel = String.format("while_exit_label_%d", labelCounter++);
 
 //        cond label
         sb.append(String.format("""
@@ -808,10 +814,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
 //        jumping based on condition
         sb.append(String.format("""
-            Invert
-            lw      t1, 4(sp)
-            addi    sp, sp, 4
-            bnez    t1, %s
+            JumpToExit  %s
         """, exitLabel
         ));
 
@@ -825,6 +828,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append(visit(ctx.block()));
 
         sb.append(String.format("""
+            Discard
             j   %s
         %s:
         """, condLabel, exitLabel
@@ -834,9 +838,9 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
     @Override public String visitRepeatExpr(SimpleLangParser.RepeatExprContext ctx) {
         StringBuilder sb = new StringBuilder();
-        String blockLabel = String.format("block_label_%d", labelCounter++);
-        String condLabel = String.format("cond_label_%d", labelCounter++);
-        String exitLabel = String.format("exit_label_%d", labelCounter++);
+        String blockLabel = String.format("repeat_block_label_%d", labelCounter++);
+        String condLabel = String.format("repeat_cond_label_%d", labelCounter++);
+        String exitLabel = String.format("repeat_exit_label_%d", labelCounter++);
 
         sb.append(String.format("""
         %s:
@@ -846,19 +850,20 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
         sb.append(visit(ctx.block()));
 
         sb.append(String.format("""
+            Discard
         %s:
         """, condLabel
         ));
+
 
         sb.append(visit(ctx.exp()));
 
 
         sb.append(String.format("""
-            Invert
-            lw      t1, 4(sp)
-            addi    sp, sp, 4
-            bnez    t1, %s
-        """, blockLabel
+            Invert          %s
+            JumpToExit      %s
+            j               %s
+        """, labelCounter++, exitLabel, blockLabel
         ));
 
         sb.append(String.format("""
