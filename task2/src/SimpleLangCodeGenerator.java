@@ -805,6 +805,7 @@ public class SimpleLangCodeGenerator extends AbstractParseTreeVisitor<String> im
 
 //        cond label
         sb.append(String.format("""
+        PushImm 0
         %s:
         """, condLabel
         ));
